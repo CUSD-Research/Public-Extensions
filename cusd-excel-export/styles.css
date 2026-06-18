@@ -10,22 +10,20 @@
 
 * { box-sizing: border-box; }
 
-body {
+html, body {
   margin: 0;
+  background: transparent;   /* let the dashboard show through behind the icon */
+}
+body {
   font-family: "Segoe UI", Tableau, Arial, sans-serif;
   color: #222;
-  background: transparent;
 }
 
 /* ---- in-dashboard button ---- */
 .wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 100%;
-  padding: 8px;
+  /* Tight to the icon: no padding/centering, so the content box is exactly the
+     47x79 glyph with transparent space around it (the dashboard shows through). */
+  padding: 0;
 }
 
 .cusd-btn {
@@ -43,10 +41,10 @@ body {
 
 /* In-dashboard control: a plain, no-background icon button (the Excel glyph in
    its own gray) so it sits alongside the other toolbar-style dashboard icons. */
-.cusd-icon-btn { background: none; border: none; padding: 0; cursor: pointer; line-height: 0; }
+.cusd-icon-btn { display: block; background: none; border: none; padding: 0; cursor: pointer; line-height: 0; }
 .cusd-icon-btn:hover:not(:disabled) { opacity: 0.7; }
 .cusd-icon-btn:disabled { cursor: default; opacity: 0.45; }
-.btn-glyph { height: 44px; width: auto; display: block; }
+.btn-glyph { width: 47px; height: 79px; display: block; }
 
 .status {
   font-size: 12px;
