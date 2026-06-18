@@ -32,7 +32,7 @@
   var DEFAULT_FOOTER = "CUSD Research";
 
   // Standard CUSD data-handling notice (mirrors the warning on the teacher
-  // dashboards); shown on the optional "About this export" tab.
+  // dashboards); shown on the optional "About" tab.
   var DATA_HANDLING_NOTICE = [
     "This and all Tableau reports should be treated as highly protected FERPA data. SHRED ALL PRINTOUTS.",
     "Data available in Tableau is not to be utilized for any research project unless it has been approved using the Research Request Process.",
@@ -186,7 +186,7 @@
         );
         var about = XLSX.utils.aoa_to_sheet(aboutRows);
         about["!cols"] = [{ wch: 100 }, { wch: 22 }];   // widen col A so the notice text is readable
-        XLSX.utils.book_append_sheet(wb, about, safeSheetName("About this export", usedNames));
+        XLSX.utils.book_append_sheet(wb, about, safeSheetName("About", usedNames));
       }
 
       XLSX.writeFile(wb, buildFilename()); // triggers the browser download
