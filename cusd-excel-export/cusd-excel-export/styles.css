@@ -1,0 +1,73 @@
+/* Minimal styling for the in-dashboard button and the Configure dialog.
+   Kept dependency-free on purpose so the extension stays small and auditable. */
+
+:root {
+  --cusd-navy: #003087;   /* CUSD primary navy */
+  --cusd-navy-dk: #00205b;
+  --cusd-gray: #5a5a5a;
+  --cusd-line: #d7d7d7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tableau, Arial, sans-serif;
+  color: #222;
+  background: transparent;
+}
+
+/* ---- in-dashboard button ---- */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  padding: 8px;
+}
+
+.cusd-btn {
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--cusd-navy);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.cusd-btn:hover:not(:disabled) { background: var(--cusd-navy-dk); }
+.cusd-btn:disabled { background: #9aa6bf; cursor: default; }
+
+/* Icon-only variant: the button face is the supplied Excel glyph, drawn in
+   currentColor (white) so it reads on the navy button. */
+.cusd-btn-icon { display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; line-height: 0; }
+.btn-glyph { height: 42px; width: auto; fill: currentColor; }
+
+.status {
+  font-size: 12px;
+  color: var(--cusd-gray);
+  min-height: 14px;
+  text-align: center;
+}
+.status.error { color: #b00020; }
+
+/* ---- configure dialog ---- */
+.cfg {
+  padding: 16px 18px;
+  max-width: 460px;
+}
+.cfg h1 { font-size: 16px; margin: 0 0 4px; color: var(--cusd-navy); }
+.cfg p.help { font-size: 12px; color: var(--cusd-gray); margin: 0 0 14px; }
+.cfg fieldset { border: 1px solid var(--cusd-line); border-radius: 4px; margin: 0 0 14px; padding: 10px 12px; }
+.cfg legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
+.cfg label { display: block; font-size: 13px; margin: 4px 0; }
+.cfg .sheet-row { display: flex; align-items: center; gap: 8px; }
+.cfg input[type="text"] { width: 100%; padding: 6px 8px; font: inherit; border: 1px solid var(--cusd-line); border-radius: 4px; }
+.cfg .row { margin: 10px 0; }
+.cfg .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.cfg .btn-secondary { background: #fff; color: var(--cusd-navy); border: 1px solid var(--cusd-navy); }
+.cfg .btn-secondary:hover { background: #eef2fb; }
+.cfg .empty { font-size: 12px; color: var(--cusd-gray); font-style: italic; }
