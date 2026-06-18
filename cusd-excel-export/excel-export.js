@@ -29,9 +29,15 @@
     buttonLabel: "buttonLabel"        // string
   };
 
-  var DEFAULT_FOOTER =
-    "CUSD Research & Data Analytics — Confidential. " +
-    "Reflects only data the signed-in user is authorized to view (row-level security).";
+  var DEFAULT_FOOTER = "CUSD Research";
+
+  // Standard CUSD data-handling notice (mirrors the warning on the teacher
+  // dashboards); shown on the optional "About this export" tab.
+  var DATA_HANDLING_NOTICE = [
+    "This and all Tableau reports should be treated as highly protected FERPA data. SHRED ALL PRINTOUTS.",
+    "Data available in Tableau is not to be utilized for any research project unless it has been approved using the Research Request Process.",
+    "This export reflects only the data the signed-in user is authorized to view (row-level security)."
+  ];
 
   var btn = document.getElementById("downloadBtn");
   var statusEl = document.getElementById("status");
@@ -167,13 +173,19 @@
       // Optional confidentiality / provenance tab.
       if (getSetting(KEYS.includeFooter, "true") === "true") {
         var footer = getSetting(KEYS.footerText, DEFAULT_FOOTER);
-        var about = XLSX.utils.aoa_to_sheet([
-          ["CUSD Research & Data Analytics"],
+        var aboutRows = [
           [footer],
+          [],
+          ["Confidentiality & data handling"]
+        ];
+        DATA_HANDLING_NOTICE.forEach(function (line) { aboutRows.push([line]); });
+        aboutRows.push(
           [],
           ["Source dashboard", dashboard.name],
           ["Exported", new Date().toLocaleString()]
-        ]);
+        );
+        var about = XLSX.utils.aoa_to_sheet(aboutRows);
+        about["!cols"] = [{ wch: 100 }, { wch: 22 }];   // widen col A so the notice text is readable
         XLSX.utils.book_append_sheet(wb, about, safeSheetName("About this export", usedNames));
       }
 
