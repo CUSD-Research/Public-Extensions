@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CUSD Request Help</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <!-- This is the in-dashboard view: just the button + a status line. -->
+  <div class="wrap">
+    <button id="helpBtn" class="cusd-icon-btn" type="button" title="Request help" aria-label="Request help">
+      <!-- The button face is an envelope glyph (same artwork as icon.svg) on a plain,
+           no-background button so it sits alongside the other dashboard icons. The
+           label lives in title/aria-label so updating it never wipes the inline SVG. -->
+      <svg class="btn-glyph" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet" role="img" aria-hidden="true" focusable="false">
+        <rect x="8" y="16" width="48" height="32" rx="5" fill="#003087"/>
+        <path d="M11 21 L32 36 L53 21" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <!-- Empty at rest (icon-only); only shows transient progress or an error. -->
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </div>
+
+  <!--
+    The Tableau Extensions API is vendored locally (no runtime CDN) so nothing is
+    fetched from the public internet while the dashboard is open. This extension
+    needs ONLY the Tableau API: there is no third-party vendor library, and it
+    makes no network calls of its own (the email is handed to the OS mail client
+    via a mailto: link). See README → "Deploy".
+  -->
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./help-request.js"></script>
+</body>
+</html>

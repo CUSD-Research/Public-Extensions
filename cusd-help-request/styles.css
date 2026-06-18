@@ -1,0 +1,84 @@
+/* Minimal styling for the in-dashboard button and the Configure dialog.
+   Dependency-free on purpose so the extension stays small and auditable. */
+
+:root {
+  --cusd-navy: #003087;   /* CUSD primary navy */
+  --cusd-navy-dk: #00205b;
+  --cusd-gray: #5a5a5a;
+  --cusd-line: #d7d7d7;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: transparent;   /* let the dashboard show through behind the icon */
+}
+body {
+  font-family: "Segoe UI", Tableau, Arial, sans-serif;
+  color: #222;
+}
+
+/* ---- in-dashboard button ---- */
+.wrap {
+  /* Fill the extension zone; the icon scales to fit and centres within it, so
+     you resize the icon just by resizing the object on the dashboard. */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.cusd-btn {
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--cusd-navy);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.cusd-btn:hover:not(:disabled) { background: var(--cusd-navy-dk); }
+.cusd-btn:disabled { background: #9aa6bf; cursor: default; }
+
+/* In-dashboard control: a plain, no-background icon button (the envelope glyph in
+   its own colours) so it sits alongside the other toolbar-style dashboard icons. */
+.cusd-icon-btn { display: block; width: 100%; height: 100%; background: none; border: none; padding: 0; cursor: pointer; line-height: 0; }
+.cusd-icon-btn:hover:not(:disabled) { opacity: 0.7; }
+.cusd-icon-btn:disabled { cursor: default; opacity: 0.45; }
+/* SVG scales to fit the button (viewBox + preserveAspectRatio=meet => fit + centre, no crop). */
+.btn-glyph { display: block; width: 100%; height: 100%; }
+
+.status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  font-size: 12px;
+  color: var(--cusd-gray);
+  text-align: center;
+  pointer-events: none;   /* transient progress/errors only; never blocks the click */
+}
+.status.error { color: #b00020; }
+
+/* ---- configure dialog ---- */
+.cfg {
+  padding: 16px 18px;
+  max-width: 460px;
+}
+.cfg h1 { font-size: 16px; margin: 0 0 4px; color: var(--cusd-navy); }
+.cfg p.help { font-size: 12px; color: var(--cusd-gray); margin: 0 0 14px; }
+.cfg label { display: block; font-size: 13px; font-weight: 600; margin: 4px 0; }
+.cfg label small { font-weight: 400; color: var(--cusd-gray); }
+.cfg .req { color: #b00020; }
+.cfg input[type="text"], .cfg input[type="email"], .cfg input[type="url"] {
+  width: 100%; padding: 6px 8px; font: inherit; border: 1px solid var(--cusd-line); border-radius: 4px;
+}
+.cfg small.help { display: block; font-weight: 400; margin-top: 3px; }
+.cfg .row { margin: 12px 0; }
+.cfg .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.cfg .btn-secondary { background: #fff; color: var(--cusd-navy); border: 1px solid var(--cusd-navy); }
+.cfg .btn-secondary:hover { background: #eef2fb; }
+.cfg-error { color: #b00020; font-size: 12px; min-height: 16px; margin: 6px 0 0; }

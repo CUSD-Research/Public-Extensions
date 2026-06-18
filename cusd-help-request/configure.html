@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CUSD Request Help — Setup</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="cfg">
+    <h1>CUSD Request Help — Setup</h1>
+    <p class="help">
+      Set where help requests should go, and (optionally) a workbook label and a
+      link back to this published view. The viewer's email app opens pre-filled
+      with the dashboard context; they add their question and send it themselves.
+    </p>
+
+    <div class="row">
+      <label for="recipient">Team inbox <span class="req">*</span></label>
+      <input id="recipient" type="email" placeholder="research@example.com"/>
+      <small class="help">Where the help email is addressed. Required.</small>
+    </div>
+
+    <div class="row">
+      <label for="workbookName">Workbook name <small>(optional)</small></label>
+      <input id="workbookName" type="text" placeholder="e.g. District Enrollment FY26"/>
+    </div>
+
+    <div class="row">
+      <label for="viewUrl">View URL <small>(optional)</small></label>
+      <input id="viewUrl" type="url" placeholder="https://…/views/Workbook/Dashboard"/>
+      <small class="help">A link the team can click to open exactly this view.</small>
+    </div>
+
+    <div id="cfgError" class="cfg-error" role="alert"></div>
+
+    <div class="actions">
+      <button id="cancelBtn" class="cusd-btn btn-secondary" type="button">Cancel</button>
+      <button id="saveBtn" class="cusd-btn" type="button">Save</button>
+    </div>
+  </div>
+
+  <!-- The dialog page needs the Tableau Extensions API only. -->
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./configure.js"></script>
+</body>
+</html>

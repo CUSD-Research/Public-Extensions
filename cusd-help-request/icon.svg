@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Master icon for the CUSD Request Help extension: a navy envelope ("send a
+     message"). Used inline on the in-dashboard button (index.html) and rasterised
+     to the manifest <icon> PNG by make_icon.py. Single accent colour, transparent
+     background, square viewBox so it scales cleanly. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Request help">
+  <rect x="8" y="16" width="48" height="32" rx="5" fill="#003087"/>
+  <path d="M11 21 L32 36 L53 21" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
