@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Master icon for the CUSD Request Help extension: a navy envelope ("send a
-     message"). Used inline on the in-dashboard button (index.html) and rasterised
-     to the manifest <icon> PNG by make_icon.py. Single accent colour, transparent
-     background, square viewBox so it scales cleanly. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Request help">
-  <rect x="8" y="16" width="48" height="32" rx="5" fill="#003087"/>
-  <path d="M11 21 L32 36 L53 21" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- Master icon for the CUSD Request Help extension: an envelope with a help "i"
+     badge. Used inline on the in-dashboard button (index.html) and rasterised to
+     the manifest <icon> PNG by make_icon.py. Grey (#9F9F9F) to sit alongside the
+     other toolbar-style dashboard icons; transparent background; non-square
+     viewBox is fit-and-centred (aspect preserved) onto the 70x70 canvas. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="47" height="61" viewBox="0 0 47 61" fill="none" role="img" aria-label="Request help">
+  <rect x="1" y="16" width="36" height="26" rx="5" fill="#9F9F9F"/>
+  <path d="M4 19.5 L19 30.5 L34 19.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="34.5" cy="44.5" r="14" fill="#9F9F9F"/>
+  <circle cx="34.5" cy="44.5" r="14" fill="none" stroke="#ffffff" stroke-width="2.6"/>
+  <circle cx="34.5" cy="40.6" r="2.3" fill="#ffffff"/>
+  <rect x="33" y="43.6" width="3" height="7.6" rx="1.5" fill="#ffffff"/>
 </svg>
