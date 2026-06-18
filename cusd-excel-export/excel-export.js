@@ -57,8 +57,12 @@
     }
   }
 
+  // The button is icon-only (the Excel glyph), so the label is exposed as the
+  // tooltip / accessible name — setting textContent here would wipe the SVG.
   function applyButtonLabel() {
-    btn.textContent = getSetting(KEYS.buttonLabel, "Download to Excel");
+    var label = getSetting(KEYS.buttonLabel, "Download to Excel");
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
   }
 
   // Reflect current config in the idle status line so the author gets feedback.
