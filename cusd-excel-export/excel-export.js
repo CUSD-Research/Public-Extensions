@@ -36,9 +36,18 @@
   var btn = document.getElementById("downloadBtn");
   var statusEl = document.getElementById("status");
 
+  // Transient only: any message clears itself so nothing lingers over the icon.
+  var statusTimer = null;
   function setStatus(msg, isError) {
+    if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
     statusEl.textContent = msg || "";
     statusEl.classList.toggle("error", !!isError);
+    if (msg) {
+      statusTimer = setTimeout(function () {
+        statusEl.textContent = "";
+        statusEl.classList.remove("error");
+      }, isError ? 6000 : 2000);
+    }
   }
 
   // --- settings helpers -----------------------------------------------------
@@ -128,8 +137,7 @@
       return;
     }
 
-    btn.disabled = true;
-    setStatus("Building workbook…");
+    btn.disabled = true;   // dim the icon while it works; no text overlay
 
     try {
       var dashboard = tableau.extensions.dashboardContent.dashboard;
@@ -144,7 +152,6 @@
         var name = allowed[i];
         var ws = byName[name];
         if (!ws) { continue; } // author enabled a sheet that no longer exists — skip quietly
-        setStatus("Reading “" + name + "”…");
         var aoa = await readSheetAsAoa(ws);
         var sheet = XLSX.utils.aoa_to_sheet(aoa);
         XLSX.utils.book_append_sheet(wb, sheet, safeSheetName(name, usedNames));
@@ -171,7 +178,7 @@
       }
 
       XLSX.writeFile(wb, buildFilename()); // triggers the browser download
-      setStatus("Downloaded " + exported + " sheet" + (exported === 1 ? "" : "s") + ".");
+      setStatus("");                       // the download itself is the feedback
     } catch (err) {
       console.error("CUSD Excel Export failed:", err);
       setStatus("Export failed: " + (err && err.message ? err.message : "unknown error"), true);
