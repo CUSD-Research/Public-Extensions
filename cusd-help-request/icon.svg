@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Master icon for the CUSD Request Help extension: an envelope with a help "i"
-     badge. Used inline on the in-dashboard button (index.html) and rasterised to
-     the manifest <icon> PNG by make_icon.py. Grey (#9F9F9F) to sit alongside the
-     other toolbar-style dashboard icons; transparent background; non-square
-     viewBox is fit-and-centred (aspect preserved) onto the 70x70 canvas. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="47" height="61" viewBox="0 0 47 61" fill="none" role="img" aria-label="Request help">
-  <rect x="1" y="16" width="36" height="26" rx="5" fill="#9F9F9F"/>
-  <path d="M4 19.5 L19 30.5 L34 19.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="34.5" cy="44.5" r="14" fill="#9F9F9F"/>
-  <circle cx="34.5" cy="44.5" r="14" fill="none" stroke="#ffffff" stroke-width="2.6"/>
-  <circle cx="34.5" cy="40.6" r="2.3" fill="#ffffff"/>
-  <rect x="33" y="43.6" width="3" height="7.6" rx="1.5" fill="#ffffff"/>
+<!-- Master icon for the CUSD Request Help extension: an envelope + help "i" badge
+     over a "Help Email" title (Kent's help-email-tile-oneline.svg). Used inline on
+     the in-dashboard button (index.html) and rasterised to the manifest <icon> PNG
+     by make_icon.py. Greys #9F9F9F / #414141 to match the other toolbar icons;
+     transparent background; the non-square viewBox is fit-and-centered onto 70x70.
+     The title is a <text> element, so a sans-serif font must be available to the
+     rasteriser (Arial on Windows; any sans via fontconfig on Linux). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="90" height="80" viewBox="0 0 90 80" fill="none" role="img" aria-label="Request help">
+  <g transform="translate(21.5,0)">
+    <rect x="1" y="16" width="36" height="26" rx="5" fill="#9F9F9F"/>
+    <path d="M4 19.5 L19 30.5 L34 19.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="34.5" cy="44.5" r="14" fill="#9F9F9F"/>
+    <circle cx="34.5" cy="44.5" r="14" fill="none" stroke="#ffffff" stroke-width="2.6"/>
+    <circle cx="34.5" cy="40.6" r="2.3" fill="#ffffff"/>
+    <rect x="33" y="43.6" width="3" height="7.6" rx="1.5" fill="#ffffff"/>
+  </g>
+  <text x="45" y="74" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="13" fill="#414141">Help Email</text>
 </svg>

@@ -10,17 +10,21 @@
   <!-- This is the in-dashboard view: just the button + a status line. -->
   <div class="wrap">
     <button id="helpBtn" class="cusd-icon-btn" type="button" title="Request help" aria-label="Request help">
-      <!-- The button face is the help-email glyph (same artwork as icon.svg) on a plain,
-           no-background button so it sits alongside the other dashboard icons. viewBox +
-           preserveAspectRatio="xMidYMid meet" make it auto-fit and centre as the object is
-           resized. The label lives in title/aria-label so updating it never wipes the SVG. -->
-      <svg class="btn-glyph" viewBox="0 0 47 61" preserveAspectRatio="xMidYMid meet" role="img" aria-hidden="true" focusable="false">
-        <rect x="1" y="16" width="36" height="26" rx="5" fill="#9F9F9F"/>
-        <path d="M4 19.5 L19 30.5 L34 19.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="34.5" cy="44.5" r="14" fill="#9F9F9F"/>
-        <circle cx="34.5" cy="44.5" r="14" fill="none" stroke="#ffffff" stroke-width="2.6"/>
-        <circle cx="34.5" cy="40.6" r="2.3" fill="#ffffff"/>
-        <rect x="33" y="43.6" width="3" height="7.6" rx="1.5" fill="#ffffff"/>
+      <!-- The button face is the help-email tile (same artwork as icon.svg): envelope +
+           help "i" badge over a "Help Email" title, on a plain no-background button so it
+           sits alongside the other dashboard icons. viewBox + preserveAspectRatio="xMidYMid
+           meet" auto-fit and centre it as the object is resized. The accessible label lives
+           in title/aria-label so updating it never wipes the SVG. -->
+      <svg class="btn-glyph" viewBox="0 0 90 80" preserveAspectRatio="xMidYMid meet" role="img" aria-hidden="true" focusable="false">
+        <g transform="translate(21.5,0)">
+          <rect x="1" y="16" width="36" height="26" rx="5" fill="#9F9F9F"/>
+          <path d="M4 19.5 L19 30.5 L34 19.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="34.5" cy="44.5" r="14" fill="#9F9F9F"/>
+          <circle cx="34.5" cy="44.5" r="14" fill="none" stroke="#ffffff" stroke-width="2.6"/>
+          <circle cx="34.5" cy="40.6" r="2.3" fill="#ffffff"/>
+          <rect x="33" y="43.6" width="3" height="7.6" rx="1.5" fill="#ffffff"/>
+        </g>
+        <text x="45" y="74" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="13" fill="#414141">Help Email</text>
       </svg>
     </button>
     <!-- Empty at rest (icon-only); only shows transient progress or an error. -->

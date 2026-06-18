@@ -152,7 +152,7 @@
     var lines = [];
     lines.push("[ Type your question or issue here — the Research team will follow up. ]");
     lines.push("");
-    lines.push("Your name: ");
+    lines.push("Your name (required): ");
     lines.push("");
     lines.push("");
     lines.push("______________________________________________________________________");
