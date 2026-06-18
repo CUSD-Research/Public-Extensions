@@ -10,20 +10,15 @@
   <div class="cfg">
     <h1>CUSD Request Help — Setup</h1>
     <p class="help">
-      Set where help requests should go, and (optionally) a workbook label and a
-      link back to this published view. The viewer's email app opens pre-filled
-      with the dashboard context; they add their question and send it themselves.
+      Nothing here is required — the button already emails the Research team and
+      collects the dashboard context on its own. Use these only to send requests
+      to a different inbox, or to add a click-through link to this view.
     </p>
 
     <div class="row">
-      <label for="recipient">Team inbox <span class="req">*</span></label>
-      <input id="recipient" type="email" placeholder="research@example.com"/>
-      <small class="help">Where the help email is addressed. Required.</small>
-    </div>
-
-    <div class="row">
-      <label for="workbookName">Workbook name <small>(optional)</small></label>
-      <input id="workbookName" type="text" placeholder="e.g. District Enrollment FY26"/>
+      <label for="recipient">Team inbox <small>(optional — overrides the default)</small></label>
+      <input id="recipient" type="email"/>
+      <small class="help" id="recipientHint">Leave blank to use the default.</small>
     </div>
 
     <div class="row">

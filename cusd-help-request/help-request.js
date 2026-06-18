@@ -2,32 +2,44 @@
  * CUSD Request Help — in-dashboard logic
  * --------------------------------------
  * A Tableau Dashboard Extension that adds a single "Request help" button. When a
- * viewer clicks it, the extension gathers light CONTEXT about what they are
- * looking at — dashboard name, worksheet names, the current filter & parameter
- * selections, the Tableau environment, and a timestamp — and opens a pre-filled
- * email (mailto:) addressed to the team inbox the author configured. The viewer
- * reviews it, types their question, and sends it from their own mail client.
+ * viewer clicks it, the extension assembles a pre-filled email (mailto:) to the
+ * Research team. The viewer types their issue at the TOP; the dashboard context
+ * the team needs to troubleshoot (dashboard name, current filter & parameter
+ * selections, environment, timestamp) is appended as a labelled footer below.
  *
  * Design notes / guardrails for CUSD:
  *   1. No backend, no secrets, no network calls. The message is assembled in the
- *      browser and handed to the OS mail client via a mailto: link. Nothing is
- *      transmitted by the extension and nothing is stored on the host.
- *   2. No data rows. It reads dashboard METADATA (names, filter/parameter
- *      selections, environment) only — never getSummaryData / underlying data —
- *      so no student/employee rows can ride along in the email. Aggregate
- *      context only.
- *   3. The recipient address, workbook name, and view URL are author-configured
- *      (Configure… dialog) and stored in the workbook's extension settings —
- *      there is no recipient hardcoded in this (public) repo.
+ *      browser and handed to the OS mail client via a mailto: link.
+ *   2. No data rows. It reads dashboard METADATA only (names, filter/parameter
+ *      selections, environment) — never getSummaryData / underlying data.
+ *   3. The recipient defaults to the Research team inbox below and can be
+ *      overridden per-workbook in the Configure dialog. No credentials are stored.
+ *
+ * NOTE on identity: a mailto: with a pre-filled body suppresses the sender's
+ * Outlook signature, and the Tableau Extensions API does not expose the logged-in
+ * user. The sender is still identified by the email's From address (it sends from
+ * their own mailbox); the body also offers an optional "Your name" line.
  */
 (function () {
   "use strict";
 
+  // If the Tableau Extensions API library didn't load (e.g. lib/ missing at the
+  // host), nothing below can run — surface that instead of a silent dead button.
+  if (typeof tableau === "undefined" || !tableau.extensions) {
+    var s0 = document.getElementById("status");
+    if (s0) { s0.textContent = "Tableau library not loaded — check the lib/ folder."; s0.className = "status error"; }
+    console.error("CUSD Request Help: Tableau Extensions API not found — is lib/tableau.extensions.1.latest.min.js present at the host?");
+    return;
+  }
+
+  // Default recipient — the Research team inbox. Overridable per-workbook via
+  // Configure… (a blank override falls back to this).
+  var DEFAULT_RECIPIENT = "research@cusd80.com";
+
   // Settings keys (stored per-extension-instance via tableau.extensions.settings).
   var KEYS = {
-    recipient: "recipient",       // team inbox email (author-set; no default in repo)
-    workbookName: "workbookName", // optional label for the email
-    viewUrl: "viewUrl"            // optional link back to the published view
+    recipient: "recipient",   // optional override of DEFAULT_RECIPIENT
+    viewUrl: "viewUrl"        // optional link back to the published view
   };
 
   // Keep the whole mailto: under a safe length — long mailto URLs get truncated
@@ -52,7 +64,6 @@
     }
   }
 
-  // --- settings helper ------------------------------------------------------
   // Treat undefined / null / "" all as "not set" so empty settings fall back.
   function getSetting(key, fallback) {
     var v = tableau.extensions.settings.get(key);
@@ -133,31 +144,35 @@
   }
 
   // --- email assembly -------------------------------------------------------
+  // The viewer types at the TOP; the auto-collected context is a labelled footer
+  // so the message reads like a normal email and the technical block — clearly
+  // marked as "for the Research team" — doesn't confuse them.
 
   function buildBody(ctx, truncateDetail) {
     var lines = [];
-    lines.push("A help request was sent from a CUSD Research Tableau dashboard.");
+    lines.push("[ Type your question or issue here — the Research team will follow up. ]");
     lines.push("");
-    lines.push("Dashboard:   " + ctx.dashboardName);
-    if (ctx.workbookName) { lines.push("Workbook:    " + ctx.workbookName); }
-    if (ctx.viewUrl)      { lines.push("Link:        " + ctx.viewUrl); }
-    if (ctx.worksheets)   { lines.push("Worksheets:  " + ctx.worksheets); }
-    lines.push("Environment: " + ctx.environment);
-
+    lines.push("Your name (optional): ");
+    lines.push("");
+    lines.push("");
+    lines.push("______________________________________________________________________");
+    lines.push("DETAILS FOR THE RESEARCH TEAM");
+    lines.push("Collected automatically to help us locate and troubleshoot this");
+    lines.push("dashboard. You don't need to read or change anything below.");
+    lines.push("______________________________________________________________________");
+    lines.push("Dashboard:    " + ctx.dashboardName);
+    if (ctx.viewUrl)    { lines.push("Link:         " + ctx.viewUrl); }
+    if (ctx.worksheets) { lines.push("Worksheets:   " + ctx.worksheets); }
+    lines.push("Environment:  " + ctx.environment);
     if (truncateDetail) {
-      lines.push("Filters:     (omitted to keep this email within size limits — please describe below)");
-      lines.push("Parameters:  (omitted — see note above)");
+      lines.push("Filters:      (omitted to keep this email within size limits)");
+      lines.push("Parameters:   (omitted)");
     } else {
-      lines.push("Filters:     " + (ctx.filters.length ? ctx.filters.join(" · ") : "(none applied / not captured)"));
-      lines.push("Parameters:  " + (ctx.parameters.length ? ctx.parameters.join(" · ") : "(none)"));
+      lines.push("Filters:      " + (ctx.filters.length ? ctx.filters.join(" · ") : "(none applied)"));
+      lines.push("Parameters:   " + (ctx.parameters.length ? ctx.parameters.join(" · ") : "(none)"));
     }
-    lines.push("Captured:    " + ctx.timestamp);
+    lines.push("Captured:     " + ctx.timestamp);
     lines.push("");
-    lines.push("----------------------------------------");
-    lines.push("Please describe the issue or request below:");
-    lines.push("");
-    lines.push("");
-    lines.push("----------------------------------------");
     lines.push("(No dashboard data rows are included in this message.)");
     return lines.join("\r\n");
   }
@@ -182,18 +197,17 @@
   // --- main click handler ---------------------------------------------------
 
   async function onHelpClick() {
-    var recipient = getSetting(KEYS.recipient, "");
-    if (!recipient) {
-      setStatus("Set a recipient in Configure (right-click the extension → Configure…).", true);
+    var recipient = getSetting(KEYS.recipient, DEFAULT_RECIPIENT);
+    if (!recipient) {   // only if the default was blanked out
+      setStatus("No recipient configured.", true);
       return;
     }
 
-    setStatus("Gathering dashboard details…");
+    setStatus("Preparing your email…");
     try {
       var dashboard = tableau.extensions.dashboardContent.dashboard;
       var ctx = {
         dashboardName: dashboard.name,
-        workbookName: getSetting(KEYS.workbookName, ""),
         viewUrl: getSetting(KEYS.viewUrl, ""),
         worksheets: dashboard.worksheets.map(function (w) { return w.name; }).join(", "),
         environment: envLabel(),
@@ -202,8 +216,7 @@
         parameters: await gatherParameters(dashboard)
       };
 
-      var subject = "Tableau help request — " + ctx.dashboardName +
-        (ctx.workbookName ? " (" + ctx.workbookName + ")" : "");
+      var subject = "Tableau help request — " + ctx.dashboardName;
 
       var url = buildMailto(recipient, subject, buildBody(ctx, false));
       if (url.length > MAILTO_MAX) {
@@ -225,21 +238,20 @@
   // performs the save so there is exactly one place that writes settings.
   function openConfigure() {
     var payload = JSON.stringify({
+      defaultRecipient: DEFAULT_RECIPIENT,
       current: {
         recipient: getSetting(KEYS.recipient, ""),
-        workbookName: getSetting(KEYS.workbookName, ""),
         viewUrl: getSetting(KEYS.viewUrl, "")
       }
     });
     var url = new URL("./configure.html", window.location.href).href;
 
-    tableau.extensions.ui.displayDialogAsync(url, payload, { height: 420, width: 480 })
+    tableau.extensions.ui.displayDialogAsync(url, payload, { height: 360, width: 480 })
       .then(function (closePayload) {
         if (!closePayload || closePayload === "cancel") { return; }
         var cfg = JSON.parse(closePayload);
         var s = tableau.extensions.settings;
         s.set(KEYS.recipient, (cfg.recipient || "").trim());
-        s.set(KEYS.workbookName, (cfg.workbookName || "").trim());
         s.set(KEYS.viewUrl, (cfg.viewUrl || "").trim());
         return s.saveAsync();
       })

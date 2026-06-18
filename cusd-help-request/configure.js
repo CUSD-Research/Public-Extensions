@@ -1,13 +1,10 @@
 /*
  * CUSD Request Help — Configure dialog (author-only)
  * --------------------------------------------------
- * Runs inside the pop-up opened from the extension's "Configure…" menu item.
- * It receives the current settings, lets the author set the recipient inbox and
- * optional workbook label / view URL, and returns the chosen config to the parent
- * (help-request.js), which performs the actual save.
- *
- * This page is pure UI — it never reads or writes settings itself, so there is
- * one and only one place that persists config (the parent).
+ * Pure UI. Receives the current settings + the built-in default recipient, lets
+ * the author optionally override the inbox or add a view URL, and returns the
+ * config to the parent (help-request.js), which performs the save. It never reads
+ * or writes settings itself, so there is exactly one place that persists config.
  */
 (function () {
   "use strict";
@@ -15,27 +12,31 @@
   var saveBtn = document.getElementById("saveBtn");
   var cancelBtn = document.getElementById("cancelBtn");
   var recipientEl = document.getElementById("recipient");
-  var workbookEl = document.getElementById("workbookName");
   var viewUrlEl = document.getElementById("viewUrl");
+  var hintEl = document.getElementById("recipientHint");
   var errEl = document.getElementById("cfgError");
 
-  function render(current) {
+  function render(data) {
+    var current = data.current || {};
     recipientEl.value = current.recipient || "";
-    workbookEl.value = current.workbookName || "";
     viewUrlEl.value = current.viewUrl || "";
+    if (data.defaultRecipient) {
+      recipientEl.placeholder = data.defaultRecipient;
+      hintEl.textContent = "Leave blank to use the default (" + data.defaultRecipient + ").";
+    }
   }
 
   function onSave() {
     var recipient = (recipientEl.value || "").trim();
-    // A recipient is required and must at least look like an address.
-    if (!recipient || recipient.indexOf("@") < 1) {
-      errEl.textContent = "Enter a valid recipient email address.";
+    // Recipient is optional (blank = use the built-in default); only validate a
+    // value if one was entered.
+    if (recipient && recipient.indexOf("@") < 1) {
+      errEl.textContent = "That doesn't look like a valid email address.";
       recipientEl.focus();
       return;
     }
     var cfg = {
       recipient: recipient,
-      workbookName: (workbookEl.value || "").trim(),
       viewUrl: (viewUrlEl.value || "").trim()
     };
     tableau.extensions.ui.closeDialog(JSON.stringify(cfg));
@@ -50,7 +51,7 @@
     .then(function (openPayload) {
       var data = {};
       try { data = JSON.parse(openPayload) || {}; } catch (e) { data = {}; }
-      render(data.current || {});
+      render(data);
       saveBtn.addEventListener("click", onSave);
       cancelBtn.addEventListener("click", onCancel);
     })
