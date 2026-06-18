@@ -41,15 +41,17 @@ body {
 .cusd-btn:hover:not(:disabled) { background: var(--cusd-navy-dk); }
 .cusd-btn:disabled { background: #9aa6bf; cursor: default; }
 
-/* Icon-only variant: the button face is the supplied Excel glyph, drawn in
-   currentColor (white) so it reads on the navy button. */
-.cusd-btn-icon { display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; line-height: 0; }
-.btn-glyph { height: 42px; width: auto; fill: currentColor; }
+/* In-dashboard control: a plain, no-background icon button (the Excel glyph in
+   its own gray) so it sits alongside the other toolbar-style dashboard icons. */
+.cusd-icon-btn { background: none; border: none; padding: 0; cursor: pointer; line-height: 0; }
+.cusd-icon-btn:hover:not(:disabled) { opacity: 0.7; }
+.cusd-icon-btn:disabled { cursor: default; opacity: 0.45; }
+.btn-glyph { height: 44px; width: auto; display: block; }
 
 .status {
   font-size: 12px;
   color: var(--cusd-gray);
-  min-height: 14px;
+  min-height: 0;
   text-align: center;
 }
 .status.error { color: #b00020; }

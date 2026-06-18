@@ -66,15 +66,11 @@
   }
 
   // Reflect current config in the idle status line so the author gets feedback.
+  // Icon-only with no resting label: keep the area below the button empty and
+  // just enable/disable it. Transient progress and errors still use setStatus.
   function refreshIdleStatus() {
-    var allowed = getAllowedSheets();
-    if (!allowed.length) {
-      setStatus("No sheets selected yet — open the extension menu › Configure…");
-      btn.disabled = true;
-    } else {
-      setStatus("Ready: " + allowed.length + " sheet" + (allowed.length === 1 ? "" : "s"));
-      btn.disabled = false;
-    }
+    btn.disabled = !getAllowedSheets().length;
+    setStatus("");
   }
 
   // --- Excel sheet-name sanitising -----------------------------------------
