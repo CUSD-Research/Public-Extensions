@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CUSD Excel Export</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <!-- This is the in-dashboard view: just the button + a status line. -->
+  <div class="wrap">
+    <button id="downloadBtn" class="cusd-btn" type="button" disabled>Download to Excel</button>
+    <div id="status" class="status" role="status" aria-live="polite">Loading…</div>
+  </div>
+
+  <!--
+    Two libraries are referenced locally (vendored) so nothing is fetched from a CDN at runtime
+    and no district data ever leaves the browser. See README → "One-time: add the two libraries".
+      1. Tableau Extensions API  -> ./lib/tableau.extensions.1.latest.min.js
+      2. SheetJS (xlsx)          -> ./vendor/xlsx.full.min.js
+    If you just want to smoke-test quickly, swap these two lines for the CDN versions noted in README.
+  -->
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./vendor/xlsx.full.min.js"></script>
+  <script src="./excel-export.js"></script>
+</body>
+</html>
