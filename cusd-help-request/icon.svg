@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Master icon for the CUSD Request Help extension, on the SAME 47x79 grid as
-     cusd-excel-export so it sits consistently next to the other toolbar icons
-     (Filters / Close / Excel): envelope + help "i" badge in the top zone, a single
-     short "Help" label at the bottom (like "Close"/"Excel"). Greys #9F9F9F /
-     #414141. Background is TRANSPARENT — there is no background rect, and the
-     <svg> itself has fill="none"; make_icon.py also composites onto a transparent
-     canvas, so the 70x70 manifest PNG is transparent. The label is <text>, so a
-     sans-serif font must be available to the rasteriser (Arial on Windows). -->
+<!-- Master icon for the CUSD Request Help extension, built on the SAME 47x79 grid
+     as cusd-excel-export so it sits consistently next to the other toolbar icons
+     (Filters / Close / Excel): envelope + help "i" badge in the top zone, a
+     two-line "Help" / "Email" label filling the bottom (two lines let the label be
+     large enough to balance the glyph and match the density of the Excel icon).
+     Greys #9F9F9F / #414141; transparent background. make_icon.py reads the
+     viewBox, so the 70x70 manifest PNG renders with no code change. The label is
+     <text>, so a sans-serif font must be available to the rasteriser (Arial on
+     Windows; any sans on Linux). -->
 <svg xmlns="http://www.w3.org/2000/svg" width="47" height="79" viewBox="0 0 47 79" fill="none" role="img" aria-label="Request help">
-  <g transform="translate(1.62,1.1) scale(0.8842)">
+  <g transform="translate(1.62,-4.9) scale(0.8842)">
     <rect x="1" y="16" width="36" height="26" rx="5" fill="#9F9F9F"/>
     <path d="M4 19.5 L19 30.5 L34 19.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="34.5" cy="44.5" r="14" fill="#9F9F9F"/>
@@ -16,5 +17,6 @@
     <circle cx="34.5" cy="40.6" r="2.3" fill="#ffffff"/>
     <rect x="33" y="43.6" width="3" height="7.6" rx="1.5" fill="#ffffff"/>
   </g>
-  <text x="23.5" y="74" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="13" fill="#414141">Help</text>
+  <text x="23.5" y="62" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="11" fill="#414141">Help</text>
+  <text x="23.5" y="76" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="11" fill="#414141">Email</text>
 </svg>
