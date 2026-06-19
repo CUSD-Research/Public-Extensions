@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
+  <dashboard-extension id="com.cusd80.research.kpitable" extension-version="0.1.0">
+    <default-locale>en_US</default-locale>
+    <name resource-id="name"/>
+    <description>CUSD Research in-line KPI table. The dashboard author points it at one flat worksheet and maps each column to a mark (bar, KPI circle, pie/donut, trend arrow, thumb, sparkline, status pill) with its own scale, comparison basis, and color rule — replacing the MIN(1) dual-axis scaffold technique. Reads summary data only; row-level security is respected.</description>
+    <author name="CUSD Research and Data Analytics" email="research@cusd80.com" organization="Chandler Unified School District" website="https://www.cusd80.com"/>
+    <min-api-version>1.10</min-api-version>
+    <source-location>
+      <!-- GitHub Pages: org CUSD-Research, repo Public-Extensions, this extension in
+           the cusd-kpi-table/ subfolder. Pages paths are case-sensitive, so the repo
+           name's capitals must match exactly. Allow-list https://cusd-research.github.io
+           on the Tableau Cloud site (Settings -> Extensions). -->
+      <url>https://cusd-research.github.io/Public-Extensions/cusd-kpi-table/index.html</url>
+    </source-location>
+    <icon>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</icon>
+    <!-- "full data" lets the extension read the source worksheet's summary data so it
+         can draw the marks. Data never leaves the browser; nothing is written anywhere. -->
+    <permissions>
+      <permission>full data</permission>
+    </permissions>
+    <!-- Adds the "Configure..." item so authors can map columns to marks. -->
+    <context-menu>
+      <configure-context-menu-item/>
+    </context-menu>
+  </dashboard-extension>
+  <resources>
+    <resource id="name">
+      <text locale="en_US">CUSD KPI Table</text>
+    </resource>
+  </resources>
+</manifest>

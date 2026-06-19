@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Configure KPI Table</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body class="cfg">
+  <div class="cfg-wrap">
+    <header class="cfg-head">
+      <h1>Configure KPI Table</h1>
+      <p class="cfg-sub">Pick a worksheet, choose what each row is, then map columns to marks. You’re only ever asked for the inputs a given mark needs.</p>
+    </header>
+
+    <div class="cfg-help">How it works: this table reads <b>one worksheet’s summary data</b> (what you’d see in <i>View Data → Summary</i>). Build a flat sheet — row dimension on <b>Rows</b>; measures + any comparison calc (and your time field, for trends) on <b>Detail</b> — drop it on this dashboard, then map columns below. You’re only asked for the inputs each mark needs.</div>
+
+    <div id="cfgError" class="cfg-error" style="display:none"></div>
+
+    <section class="cfg-card">
+      <h2>1 · Data source</h2>
+      <div class="cfg-grid">
+        <label class="fld"><span>Source worksheet</span><select id="srcSheet"></select></label>
+        <label class="fld"><span>Each row is</span><select id="rowField"></select></label>
+        <label class="fld"><span>Row sub-line <em>(optional)</em></span><select id="rowSubField"></select></label>
+        <label class="fld"><span>Row column header</span><input id="rowHeader" type="text" placeholder="e.g. Student"/></label>
+        <label class="fld"><span>Density</span><select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+      </div>
+      <details class="cfg-details">
+        <summary>Time dimension &amp; year selector <em>(optional — for sparklines / focal-year)</em></summary>
+        <p class="cfg-note">If your sheet has multiple rows per entity over time (e.g. one row per <b>School Year</b> — put that field on Detail), set it here. Scalar cells then show the <b>focal year</b>; sparklines trend across years. Leave the year <b>unfiltered</b> on the sheet so the trend has all its points.</p>
+        <div class="cfg-grid">
+          <label class="fld"><span>Time dimension</span><select id="timeField"></select></label>
+          <label class="fld"><span>Sparkline trend</span><select id="sparkMode"><option value="clip">Up to the selected year</option><option value="full">All years (highlight selected)</option></select></label>
+        </div>
+        <label class="ctrl-chk" style="margin-top:6px"><input id="showYearSelector" type="checkbox"/> Show a year selector in the table (viewer picks the focal year)</label>
+      </details>
+      <details class="cfg-details">
+        <summary>Download button <em>(Excel export of this table’s data)</em></summary>
+        <label class="ctrl-chk"><input id="exportEnabled" type="checkbox"/> Show a “Download to Excel” button</label>
+        <div class="cfg-grid" style="margin-top:8px">
+          <label class="fld"><span>Filename prefix</span><input id="exportPrefix" type="text" placeholder="(defaults to worksheet name)"/></label>
+        </div>
+        <label class="ctrl-chk" style="margin-top:6px"><input id="exportAbout" type="checkbox"/> Include FERPA “About” tab</label>
+      </details>
+    </section>
+
+    <section class="cfg-card">
+      <div class="cfg-card-head">
+        <h2>2 · Columns</h2>
+        <button id="addColumn" type="button" class="btn btn-ghost">+ Add column</button>
+      </div>
+      <div id="columns" class="cfg-cols"></div>
+    </section>
+
+    <section class="cfg-card">
+      <h2>3 · Live preview <em>(your sample data)</em></h2>
+      <div class="scroller"><table id="preview" class="kpi"></table></div>
+    </section>
+
+    <footer class="cfg-foot">
+      <span class="cfg-foot-note">Reads summary data only — row-level security is respected for every viewer.</span>
+      <div class="cfg-foot-btns">
+        <button id="cancelBtn" type="button" class="btn btn-ghost">Cancel</button>
+        <button id="saveBtn" type="button" class="btn btn-primary">Save</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./renderers.js"></script>
+  <script src="./configure.js"></script>
+</body>
+</html>

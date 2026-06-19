@@ -1,0 +1,118 @@
+/* CUSD KPI Table — styles for the in-dashboard view AND the Configure dialog.
+   Cell-render classes mirror the approved look-and-feel mockup. */
+:root{
+  --ink:#1f2a37; --muted:#6b7280; --line:#e5e7eb; --line2:#eef1f4;
+  --blue:#2f6fb0; --green:#2e7d57; --amber:#c08a2d; --red:#c0432d; --purple:#5a2d82;
+}
+*{box-sizing:border-box}
+html,body{margin:0; height:100%}
+body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:#fff}
+
+/* ---------- in-dashboard container ---------- */
+.app{width:100%; height:100%; display:flex; flex-direction:column}
+.toolbar{display:flex; justify-content:flex-end; align-items:center; padding:2px 2px 6px; gap:6px; flex:0 0 auto}
+.year-select{font:inherit; font-size:12px; padding:3px 7px; border:1px solid #cdd3da; border-radius:6px; background:#fff; margin-right:auto}
+.icon-btn{display:inline-flex; align-items:center; justify-content:center; width:30px; height:28px;
+  background:transparent; border:1px solid transparent; border-radius:6px; cursor:pointer; padding:0}
+.icon-btn:hover{background:#f1edf7; border-color:#e0d7ee}
+.icon-btn:disabled{opacity:.4; cursor:default; background:transparent; border-color:transparent}
+.status{display:flex; align-items:center; justify-content:center; text-align:center;
+  min-height:80px; padding:18px; color:var(--muted); font-size:13px; line-height:1.5; flex:1}
+.status.error{color:var(--red)}
+.status.help{align-items:flex-start; justify-content:center; text-align:left; overflow:auto; color:var(--ink)}
+.help-card{max-width:660px; padding:6px 4px}
+.help-card h3{margin:0 0 6px; font-size:15px; color:var(--purple)}
+.help-card p{margin:6px 0}
+.help-card ol{margin:6px 0 6px 18px; padding:0}
+.help-card li{margin:5px 0; line-height:1.45}
+.help-card .tip{color:var(--muted); font-size:12px}
+.scroller{overflow:auto; border:1px solid var(--line); border-radius:10px; flex:1; min-height:0}
+
+/* ---------- the KPI table ---------- */
+table.kpi{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px}
+.kpi thead th{position:sticky; top:0; background:#f7f8fa; color:var(--ink); text-align:center;
+  font-weight:600; padding:10px 12px; border-bottom:2px solid var(--line); white-space:nowrap; font-size:12px; z-index:2}
+.kpi thead th .hint{display:block; font-weight:400; color:var(--muted); font-size:10.5px}
+.kpi tbody td{padding:11px 12px; border-bottom:1px solid var(--line2); text-align:center; vertical-align:middle; white-space:nowrap}
+.kpi tbody tr:hover td{background:#f9fbfd}
+.kpi .col-head{position:sticky; left:0; background:#fff; text-align:left; z-index:1; box-shadow:1px 0 0 var(--line); font-weight:600}
+.kpi tbody tr:hover .col-head{background:#f9fbfd}
+.kpi.compact tbody td{padding:6px 10px}
+.kpi.compact thead th{padding:7px 10px}
+
+.twoline .a{font-weight:600; font-variant-numeric:tabular-nums}
+.twoline .b{color:var(--muted); font-size:11px}
+.txt{font-weight:600}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums; font-weight:700; font-size:13.5px}
+.inline{display:flex; align-items:center; gap:10px; justify-content:center}
+.barwrap{display:flex; align-items:center; gap:8px; justify-content:flex-start; min-width:124px}
+.bar2{position:relative; flex:1; height:9px; border-radius:5px; background:#eef1f4; overflow:hidden}
+.bar2 > i{position:absolute; left:0; top:0; bottom:0; border-radius:5px; display:block}
+.barval{font-variant-numeric:tabular-nums; font-weight:700; font-size:13px; width:48px; text-align:right}
+.rate{display:flex; flex-direction:column; align-items:center; gap:3px; min-width:74px}
+.rate .n{font-variant-numeric:tabular-nums; font-weight:700; font-size:13.5px}
+.ratebar{width:62px; height:6px; border-radius:4px; background:#eef1f4; overflow:hidden}
+.ratebar > i{display:block; height:100%; border-radius:4px}
+.kpic{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-variant-numeric:tabular-nums; font-size:13px; box-shadow:0 1px 1.5px rgba(0,0,0,.15)}
+.pill{display:inline-block; padding:2px 10px; border-radius:999px; font-weight:600; font-size:11.5px}
+.sparkwrap{display:flex; align-items:center; gap:7px; justify-content:center}
+.sparkend{font-variant-numeric:tabular-nums; font-weight:700; font-size:12.5px}
+.center{display:flex; justify-content:center; align-items:center}
+svg{display:block}
+
+/* ===================== Configure dialog ===================== */
+body.cfg{background:#f4f6f8; font-size:13px}
+.cfg-wrap{max-width:760px; margin:0 auto; padding:14px 16px 90px}
+.cfg-head h1{font-size:17px; color:var(--purple); margin:2px 0}
+.cfg-sub{color:var(--muted); margin:0 0 10px; font-size:12.5px}
+.cfg-error{background:#fdeeec; border:1px solid #f1b6ad; color:#8a2c1c; border-radius:8px; padding:8px 12px; margin:0 0 10px; font-size:12.5px}
+.cfg-help{background:#f1edf7; border:1px solid #e0d7ee; color:#3a3340; border-radius:8px; padding:10px 12px; font-size:12.5px; line-height:1.5; margin:0 0 12px}
+.cfg-card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:0 0 14px}
+.cfg-card h2{font-size:13px; margin:0 0 10px; color:var(--ink)}
+.cfg-card h2 em, .cfg-sub em, .cfg-details em, .ctrl-lbl em{font-style:normal; color:var(--muted); font-weight:400}
+.cfg-card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+.cfg-card-head h2{margin:0}
+.cfg-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px 14px}
+.fld{display:flex; flex-direction:column; gap:3px; font-size:12px}
+.fld > span{color:var(--muted); font-weight:600; font-size:11px}
+.fld input, .fld select{font:inherit; font-size:12.5px; padding:5px 7px; border:1px solid #cdd3da; border-radius:6px; background:#fff}
+.cfg-details{margin-top:12px; border-top:1px dashed var(--line); padding-top:10px}
+.cfg-details summary{cursor:pointer; font-weight:600; font-size:12.5px}
+.cfg-note{color:var(--muted); font-size:11.5px; margin:6px 0}
+
+/* column cards */
+.cfg-cols{display:flex; flex-direction:column; gap:10px}
+.col-card{border:1px solid var(--line); border-radius:9px; background:#fbfcfd}
+.col-card-top{display:flex; align-items:center; gap:8px; padding:9px 10px; border-bottom:1px solid var(--line2)}
+.col-header{flex:1; font:inherit; font-size:13px; font-weight:600; padding:5px 7px; border:1px solid #cdd3da; border-radius:6px}
+.col-renderer{font:inherit; font-size:12.5px; padding:5px 7px; border:1px solid #cdd3da; border-radius:6px; background:#fff}
+.col-actions{display:flex; gap:4px}
+.col-card-body{padding:10px 12px; display:flex; flex-direction:column; gap:9px}
+.ctrl{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.ctrl-lbl{min-width:120px; color:var(--muted); font-weight:600; font-size:11.5px}
+.ctrl select, .ctrl input[type=text], .ctrl input[type=number]{font:inherit; font-size:12.5px; padding:4px 6px; border:1px solid #cdd3da; border-radius:6px; background:#fff}
+.ctrl input[type=color]{width:34px; height:26px; padding:0; border:1px solid #cdd3da; border-radius:6px; background:#fff}
+.ctrl-inner, .ctrl-inner-block{display:inline-flex; align-items:center; gap:6px}
+.ctrl-inner-block{flex-direction:column; align-items:flex-start}
+.ctrl-chk{display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--ink)}
+.tri{display:flex; gap:12px}
+.tri label{display:inline-flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted)}
+.list-edit{display:flex; flex-direction:column; gap:5px}
+.list-row{display:flex; align-items:center; gap:6px}
+.le-pre{color:var(--muted); font-size:12px}
+
+/* buttons */
+.btn{font:inherit; cursor:pointer; border-radius:6px; border:1px solid transparent; padding:6px 12px; font-size:12.5px}
+.btn-primary{background:var(--purple); color:#fff}
+.btn-ghost{background:#fff; border-color:#cdd3da; color:var(--ink)}
+.btn-sm{padding:3px 9px; font-size:11.5px; align-self:flex-start}
+.btn-x{background:#fff; border:1px solid #cdd3da; color:var(--ink); padding:3px 7px; line-height:1}
+
+/* sticky footer */
+.cfg-foot{position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; padding:10px 18px}
+.cfg-foot-note{color:var(--muted); font-size:11.5px}
+.cfg-foot-btns{display:flex; gap:8px}
+.cfg .scroller{max-height:260px}

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CUSD KPI Table — look &amp; feel mockup (synthetic data)</title>
+<!--
+  ============================================================================
+  CUSD KPI Table extension — LOOK & FEEL MOCKUP v2 (config-driven, not wired)
+  ----------------------------------------------------------------------------
+  Static, double-click-to-open prototype. SYNTHETIC data only (redacted
+  "Student NN" tokens + generic "Site X" labels). NO network calls.
+
+  v2 is config-driven on purpose: each column is { field -> renderer + opts },
+  exactly like the real extension's Configure model. The "Configure preview"
+  panel lets you SWAP a column's renderer live, so you can iterate the look
+  yourself. A renderer gallery shows the full cell palette.
+
+  Reproduces two real CUSD dashboards:
+    Example 1 — "Overall Student List" (per-student)
+    Example 2 — "Service Learning"     (aggregate by site)
+  In the real extension every value comes from ONE flat worksheet's summary
+  data via getSummaryDataReaderAsync() — no MIN(1) axes anywhere.
+  ============================================================================
+-->
+<style>
+  :root{
+    --ink:#1f2a37; --muted:#6b7280; --line:#e5e7eb; --line2:#eef1f4;
+    --blue:#2f6fb0; --green:#2e7d57; --amber:#c08a2d; --red:#c0432d; --purple:#5a2d82;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); margin:0; background:#fff; padding:18px 20px 52px}
+  h1{font-size:20px; color:var(--purple); margin:0 0 2px}
+  h2{font-size:14px; margin:26px 0 8px; color:var(--ink)}
+  h2 span{font-weight:400; color:var(--muted)}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 14px}
+  .banner{border:1px solid #f0c98a; background:#fff7ea; color:#7a5a16;
+    border-radius:8px; padding:9px 12px; font-size:12.5px; margin:0 0 8px}
+  .ferpa{border:1px solid #f1b6ad; background:#fdeeec; color:#8a2c1c;
+    border-radius:8px; padding:8px 12px; font-size:11.5px; margin:0 0 4px}
+  .ferpa b{color:#6f2014}
+  code{background:#f3f4f6; padding:1px 5px; border-radius:4px; color:#374151; font-size:.92em}
+
+  /* controls */
+  .controls{display:flex; flex-wrap:wrap; gap:14px 18px; align-items:flex-end;
+    padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:#fbfcfd; margin:0 0 10px}
+  .controls .note{flex-basis:100%; font-size:12px; color:var(--muted); margin-bottom:2px}
+  .controls .grp{display:flex; flex-direction:column; gap:3px}
+  .controls .lbl{font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.02em}
+  .controls select{font:inherit; font-size:12.5px; padding:4px 6px; border:1px solid #cdd3da; border-radius:6px; background:#fff}
+  .controls .chk{display:flex; align-items:center; gap:6px; font-size:12.5px; padding-bottom:5px}
+
+  /* tables */
+  .scroller{overflow-x:auto; border:1px solid var(--line); border-radius:10px}
+  table{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px}
+  thead th{position:sticky; top:0; background:#f7f8fa; color:var(--ink); text-align:center;
+    font-weight:600; padding:10px 12px; border-bottom:2px solid var(--line); white-space:nowrap; font-size:12px}
+  thead th .hint{display:block; font-weight:400; color:var(--muted); font-size:10.5px}
+  tbody td{padding:11px 12px; border-bottom:1px solid var(--line2); text-align:center; vertical-align:middle; white-space:nowrap}
+  tbody tr:hover td{background:#f9fbfd}
+  .col-head{position:sticky; left:0; background:#fff; text-align:left; z-index:1; box-shadow:1px 0 0 var(--line); font-weight:600}
+  tbody tr:hover .col-head{background:#f9fbfd}
+  table.compact tbody td{padding:6px 10px}
+  table.compact thead th{padding:7px 10px}
+
+  .stu-meta{color:var(--muted); font-size:11px; font-weight:400}
+  .twoline .a{font-weight:600; font-variant-numeric:tabular-nums}
+  .twoline .b{color:var(--muted); font-size:11px}
+  .txt{font-weight:600}
+  .num{font-variant-numeric:tabular-nums; font-weight:700; font-size:13.5px}
+  .inline{display:flex; align-items:center; gap:10px; justify-content:center}
+  .barwrap{display:flex; align-items:center; gap:8px; justify-content:flex-start; min-width:124px}
+  .bar2{position:relative; flex:1; height:9px; border-radius:5px; background:#eef1f4; overflow:hidden}
+  .bar2 > i{position:absolute; left:0; top:0; bottom:0; border-radius:5px; display:block}
+  .barval{font-variant-numeric:tabular-nums; font-weight:700; font-size:13px; width:44px; text-align:right}
+  .rate{display:flex; flex-direction:column; align-items:center; gap:3px; min-width:74px}
+  .rate .n{font-variant-numeric:tabular-nums; font-weight:700; font-size:13.5px}
+  .ratebar{width:62px; height:6px; border-radius:4px; background:#eef1f4; overflow:hidden}
+  .ratebar > i{display:block; height:100%; border-radius:4px}
+  .pill{display:inline-block; padding:2px 10px; border-radius:999px; font-weight:600; font-size:11.5px}
+  .stack{display:inline-flex; width:100px; height:10px; border-radius:5px; overflow:hidden; vertical-align:middle; background:#eef1f4}
+  .stack > i{display:block; height:100%}
+
+  .legend{margin-top:12px; color:var(--muted); font-size:12px; line-height:1.7}
+  .legend b{color:var(--ink)}
+
+  /* gallery */
+  .gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:10px; margin-top:8px}
+  .gcard{border:1px solid var(--line); border-radius:8px; padding:10px}
+  .gcard .cell{min-height:40px; display:flex; align-items:center; justify-content:center; margin-bottom:7px}
+  .gcard .gname{font-size:11.5px; font-weight:600; text-align:center}
+  .gcard .gdesc{font-size:10.5px; color:var(--muted); margin-top:1px; text-align:center}
+
+  .closing{margin-top:26px; padding:14px 16px; border:1px solid var(--line); border-left:4px solid var(--purple);
+    border-radius:8px; background:#faf8fc; font-size:13px; line-height:1.6; color:#3a3340}
+  svg{display:block}
+  .center{display:flex; justify-content:center; align-items:center}
+</style>
+</head>
+<body>
+  <h1>CUSD KPI Tables <span style="font-weight:400;color:var(--muted);font-size:14px">— rendered by code, zero dual-axis scaffolds</span></h1>
+  <p class="sub">Config-driven look &amp; feel mockup for a dashboard extension. Swap renderers below to iterate the look.</p>
+
+  <div class="banner">
+    <b>Synthetic data.</b> Names redacted to <code>Student NN</code>; sites are generic <code>Site X</code> labels. No network calls.
+    Every cell is drawn from a flat data array — the same path the extension uses on <b>one plain worksheet's summary data</b>. No <code>MIN(1)</code>, no dual axes, no hidden ticks.
+  </div>
+  <div class="ferpa"><b>⚠ FERPA:</b> Treat all Tableau reports as highly protected FERPA data. SHRED ALL PRINTOUTS.</div>
+
+  <!-- ===================== Example 1 ===================== -->
+  <h2>Example 1 — Overall Student List <span>· per-student · ALGEBRA 1 (P3, Sec 322)</span></h2>
+  <div id="controls" class="controls"></div>
+  <div class="scroller"><table id="table1"></table></div>
+  <div class="legend">
+    <b>Try it:</b> use the dropdowns above to swap a column's renderer (circle ⇄ bar ⇄ pill, etc.), toggle the sparkline, or change density. The table re-draws instantly — that's the Configure experience the extension gives the author.
+  </div>
+
+  <!-- ===================== Example 2 ===================== -->
+  <h2>Example 2 — Service Learning <span>· aggregate by site · Student Service Hours 2026</span></h2>
+  <div class="scroller"><table id="table2"></table></div>
+  <div class="legend">
+    <b>Student Participation</b> pie-wedge + % ·
+    <b>Avg Hrs / Participating</b> <span style="color:var(--blue)">▲ above</span> / <span style="color:var(--red)">▼ below</span> / <span style="color:#7a7f87">► same</span> vs district ·
+    <b>Avg Hrs / Total</b> thumb <span style="color:var(--green)">up = above goal 3.5</span> / <span style="color:var(--red)">down = below</span>.
+  </div>
+
+  <!-- ===================== Gallery ===================== -->
+  <h2>Cell renderer palette <span>· the menu the Configure dialog would offer per column</span></h2>
+  <div id="gallery" class="gallery"></div>
+
+  <div class="closing">
+    <b>How this replaces the scaffold:</b> build <b>one ordinary worksheet</b> — the dimension plus raw measures as a flat table — and drop this extension on the dashboard pointed at it.
+    In <b>Configure…</b> you map each column to a renderer + thresholds (exactly the dropdowns above). Alignment is automatic; a new KPI column is one dropdown, not another dual-axis.
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- tiny helpers ---------- */
+function pt(cx,cy,r,deg){ var a=deg*Math.PI/180; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+var SPARK_ID=0;
+function fmt(v,d){ return Number(v).toLocaleString(undefined,{minimumFractionDigits:d||0, maximumFractionDigits:d||0}); }
+
+/* ---------- color / band functions (referenced by column opts) ---------- */
+function gradeColor(p){ return p>=80?"var(--green)":p>=60?"var(--amber)":"var(--red)"; }
+function profColor(t){
+  if(t==="Exceeds"||t==="Meets") return "var(--green)";
+  if(t==="Approaches") return "var(--amber)";
+  if(t==="Minimally")  return "var(--red)";
+  return "var(--muted)";
+}
+function ssiColor(t){
+  t=(t||"").toUpperCase();
+  if(t==="EXEMPLARY") return "var(--blue)";
+  if(t==="MINIMAL")   return "var(--green)";
+  if(t==="MODERATE")  return "var(--amber)";
+  if(t==="HIGH"||t==="SIGNIFICANT") return "var(--red)";
+  return "var(--muted)";
+}
+function absBand(v){ if(v<=5) return {bg:"#fce4dd",fg:"#9c3a23"}; if(v<=10) return {bg:"#f3a58f",fg:"#6f2014"}; return {bg:"#e2664c",fg:"#fff"}; }
+function absBarColor(v){ return v>10?"var(--red)":v>5?"var(--amber)":"#d98c7a"; }
+function rateColor(v){ return v>=10?"var(--red)":v>=5?"var(--amber)":"#d98c7a"; }
+
+/* ---------- shared SVG builders ---------- */
+function thumbSVG(up,color){
+  var rot = up ? "" : ' transform="rotate(180 12 12)"';
+  return '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M2 21h2.5a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H2v11zM7.5 20a1 1 0 0 0 1 1h8.6a1.5 1.5 0 0 0 1.48-1.25l1.2-7A1.5 1.5 0 0 0 18.3 10H13V6.2A2.2 2.2 0 0 0 10.8 4c-.5 0-.85.32-1 .8L7.5 10.2V20z" fill="'+color+'"'+rot+'/></svg>';
+}
+function arrowSVG(dir){
+  var map={ up:["var(--blue)","M12 3 L20 13 L15 13 L15 21 L9 21 L9 13 L4 13 Z"],
+            down:["var(--red)","M12 21 L4 11 L9 11 L9 3 L15 3 L15 11 L20 11 Z"],
+            same:["#7a7f87","M21 12 L11 4 L11 9 L3 9 L3 15 L11 15 L11 20 Z"] };
+  var m=map[dir]||map.same;
+  return '<svg viewBox="0 0 24 24" width="25" height="25"><path d="'+m[1]+'" fill="'+m[0]+'"/></svg>';
+}
+function sparkSVG(vals){
+  var w=104,h=30,pad=3, bl=h-1;
+  var mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals), range=(mx-mn)||1;
+  var step=(w-2*pad)/(vals.length-1);
+  var pts=vals.map(function(v,i){ return [pad+i*step, h-pad-((v-mn)/range)*(h-2*pad)]; });
+  var line=pts.map(function(p,i){ return (i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1); }).join(" ");
+  var area="M "+pts[0][0].toFixed(1)+" "+bl+" "+pts.map(function(p){ return "L "+p[0].toFixed(1)+" "+p[1].toFixed(1); }).join(" ")+" L "+pts[pts.length-1][0].toFixed(1)+" "+bl+" Z";
+  var up=(vals[vals.length-1]>=vals[0]), col=up?"#2e7d57":"#c0432d", id="spk"+(++SPARK_ID);
+  var last=pts[pts.length-1];
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'">'+
+    '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
+    '<stop offset="0%" stop-color="'+col+'" stop-opacity="0.32"/>'+
+    '<stop offset="100%" stop-color="'+col+'" stop-opacity="0.03"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#'+id+')" stroke="none"/>'+
+    '<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="2.7" fill="'+col+'"/></svg>';
+}
+function pieSVG(pct,max){
+  var frac=clamp01(pct/(max||100)), cx=16, cy=16, r=15;
+  var s='<circle cx="16" cy="16" r="15" fill="#d4d7db"/>';
+  if(frac>=0.999){ s+='<circle cx="16" cy="16" r="15" fill="#c0392b"/>'; }
+  else if(frac>0){ var p0=pt(cx,cy,r,-90), p1=pt(cx,cy,r,-90+360*frac), lg=frac>0.5?1:0;
+    s+='<path d="M16 16 L'+p0[0].toFixed(2)+' '+p0[1].toFixed(2)+' A15 15 0 '+lg+' 1 '+p1[0].toFixed(2)+' '+p1[1].toFixed(2)+' Z" fill="#c0392b"/>'; }
+  s+='<circle cx="16" cy="16" r="15" fill="none" stroke="#ffffff" stroke-width="1.1"/>';
+  return '<svg viewBox="0 0 32 32" width="36" height="36" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.18))">'+s+'</svg>';
+}
+function donutSVG(pct,max,color){
+  var frac=clamp01(pct/(max||100)), r=13, c=2*Math.PI*r, len=frac*c;
+  return '<svg viewBox="0 0 32 32" width="36" height="36">'+
+    '<circle cx="16" cy="16" r="'+r+'" fill="none" stroke="#e3e6ea" stroke-width="5.5"/>'+
+    '<circle cx="16" cy="16" r="'+r+'" fill="none" stroke="'+(color||"var(--blue)")+'" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="'+len.toFixed(2)+' '+(c-len).toFixed(2)+'" transform="rotate(-90 16 16)"/></svg>';
+}
+
+/* ---------- RENDERERS: name -> (value, opts, row) => HTML ----------------- */
+var RENDERERS = {
+  number:    function(v,o){ o=o||{}; var s=(typeof v==="number")?fmt(v,o.decimals):v; return '<span class="num">'+(o.prefix||"")+s+(o.suffix||"")+'</span>'; },
+  numberSub: function(v,o,row){ return '<div class="twoline"><div class="a">'+fmt(v,o.decimals)+'</div><div class="b">('+fmt(row[o.totalField],0)+')</div></div>'; },
+  twoLine:   function(v,o,row){ return '<div class="twoline"><div class="a">'+v+'</div><div class="b">'+row[o.subField]+'</div></div>'; },
+  text:      function(v,o){ o=o||{}; var c=o.colorFn?o.colorFn(v):"var(--ink)"; return '<span class="txt" style="color:'+c+'">'+v+'</span>'; },
+  gradeBar:  function(v,o){ o=o||{}; var w=clamp01(v/(o.max||100))*100; return '<div class="barwrap"><div class="bar2"><i style="width:'+w+'%;background:'+gradeColor(v)+'"></i></div><span class="barval">'+v+'%</span></div>'; },
+  bar:       function(v,o){ o=o||{}; var w=clamp01(v/(o.max||100))*100; var col=o.colorFn?o.colorFn(v):"var(--blue)"; return '<div class="barwrap"><div class="bar2"><i style="width:'+w+'%;background:'+col+'"></i></div><span class="barval">'+fmt(v,o.decimals)+(o.suffix||"")+'</span></div>'; },
+  bullet:    function(v,o){ o=o||{}; var max=o.max||100, tgt=o.target||0; var w=clamp01(v/max)*100, tx=clamp01(tgt/max)*100; var col=v>=tgt?"var(--green)":"var(--amber)"; return '<div class="barwrap"><div class="bar2"><i style="width:'+w+'%;background:'+col+'"></i><span style="position:absolute;left:'+tx+'%;top:-2px;bottom:-2px;width:2px;background:var(--ink)"></span></div><span class="barval">'+fmt(v,o.decimals)+(o.suffix||"")+'</span></div>'; },
+  circleKPI: function(v,o){ o=o||{}; var b=o.bandFn?o.bandFn(v):{bg:"#eef1f4",fg:"#374151"}; var n=(typeof v==="number")?v.toFixed(o.decimals||0):v; return '<div class="center"><div style="width:36px;height:36px;border-radius:50%;background:'+b.bg+';color:'+b.fg+';display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;box-shadow:0 1px 1.5px rgba(0,0,0,.15)">'+n+'</div></div>'; },
+  pie:       function(v,o){ o=o||{}; return '<div class="inline" style="gap:9px">'+pieSVG(v,o.max)+'<span class="num">'+fmt(v,o.decimals)+'%</span></div>'; },
+  donut:     function(v,o){ o=o||{}; return '<div class="inline" style="justify-content:flex-start;min-width:120px">'+donutSVG(v,o.max,o.color)+'<span class="num">'+fmt(v,o.decimals)+'%</span></div>'; },
+  arrow:     function(v,o){ o=o||{}; var b=o.baseline, e=o.eps||0.005; var dir=v>b+e?"up":v<b-e?"down":"same"; return '<div class="inline" style="min-width:96px">'+arrowSVG(dir)+'<span class="num">'+fmt(v,o.decimals)+'</span></div>'; },
+  thumbBinary:function(v,o){ o=o||{}; var flagged=!!v; return '<div class="center">'+thumbSVG(!flagged, flagged?"var(--red)":"var(--blue)")+'</div>'; },
+  thumbGoal: function(v,o){ o=o||{}; var above=v>=o.goal; return '<div class="inline" style="min-width:96px">'+thumbSVG(above, above?"var(--green)":"var(--red)")+'<span class="num">'+fmt(v,o.decimals)+'</span></div>'; },
+  rateOverBar:function(v,o){ o=o||{}; var w=clamp01(v/(o.max||20))*100; return '<div class="rate"><span class="n">'+fmt(v,o.decimals!=null?o.decimals:1)+'%</span><div class="ratebar"><i style="width:'+w+'%;background:'+rateColor(v)+'"></i></div></div>'; },
+  sparkline: function(v){ return '<div class="center">'+sparkSVG(v)+'</div>'; },
+  ragPill:   function(v,o){ o=o||{}; if(o.bandFn){ var b=o.bandFn(v); var n=(typeof v==="number")?v.toFixed(o.decimals||0):v; return '<span class="pill" style="background:'+b.bg+';color:'+b.fg+'">'+n+'</span>'; } var c=o.colorFn?o.colorFn(v):"#374151"; return '<span class="pill" style="background:#eef1f4;color:'+c+'">'+v+'</span>'; },
+  stackedBar:function(v,o){ o=o||{}; var total=v.reduce(function(s,x){return s+x.value;},0)||1; var seg=v.map(function(x){ return '<i style="width:'+(x.value/total*100)+'%;background:'+x.color+'"></i>'; }).join(""); return '<div class="center"><span class="stack">'+seg+'</span></div>'; }
+};
+
+/* ===================== synthetic data ===================== */
+var ROSTER = [
+  {id:"Student 01", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"White",    flags:"No Flags",   prof:"Approaches", grade:84, absent:14.5, ssiAtt:"MODERATE", chronic:true,  last20:12.5, ssiBeh:"EXEMPLARY", spark:[70,73,72,79,82,84]},
+  {id:"Student 02", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"Hispanic", flags:"EL",         prof:"Meets",      grade:91, absent:6.5,  ssiAtt:"MINIMAL",  chronic:false, last20:2.5,  ssiBeh:"MODERATE",  spark:[80,82,85,88,90,91]},
+  {id:"Student 03", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"Multiple", flags:"504 • SPED", prof:"Approaches", grade:68, absent:12.0, ssiAtt:"MODERATE", chronic:true,  last20:15.0, ssiBeh:"EXEMPLARY", spark:[62,60,64,66,67,68]},
+  {id:"Student 04", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"Black",    flags:"No Flags",   prof:"Meets",      grade:88, absent:14.5, ssiAtt:"MODERATE", chronic:true,  last20:2.5,  ssiBeh:"MINIMAL",   spark:[78,80,83,85,86,88]},
+  {id:"Student 05", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"White",    flags:"No Flags",   prof:"Exceeds",    grade:96, absent:2.0,  ssiAtt:"MINIMAL",  chronic:false, last20:2.5,  ssiBeh:"EXEMPLARY", spark:[88,90,92,93,95,96]},
+  {id:"Student 06", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"Asian",    flags:"GFTD",       prof:"Exceeds",    grade:94, absent:1.5,  ssiAtt:"MINIMAL",  chronic:false, last20:0.0,  ssiBeh:"EXEMPLARY", spark:[90,91,92,93,94,94]},
+  {id:"Student 07", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"Hispanic", flags:"No Flags",   prof:"Minimally",  grade:57, absent:9.0,  ssiAtt:"MINIMAL",  chronic:false, last20:7.5,  ssiBeh:"MODERATE",  spark:[60,58,55,54,56,57]},
+  {id:"Student 08", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"White",    flags:"504",        prof:"Approaches", grade:73, absent:7.0,  ssiAtt:"MINIMAL",  chronic:false, last20:2.5,  ssiBeh:"EXEMPLARY", spark:[68,70,69,71,72,73]},
+  {id:"Student 09", meta:"Grade 9 • Sample HS", course:"ALGEBRA 1", coursesub:"Period: P3", eth:"Multiple", flags:"EL • SPED",  prof:"Minimally",  grade:49, absent:18.5, ssiAtt:"SIGNIFICANT", chronic:true, last20:20.0, ssiBeh:"MINIMAL", spark:[55,52,50,48,47,49]}
+];
+
+var SITES = [
+  {site:"District", n:436, total:22633, part:1.93, hours:8542, avgPart:19.59, avgTot:0.377},
+  {site:"Site A",   n:81,  total:2636,  part:3.07, hours:936,  avgPart:11.56, avgTot:0.355},
+  {site:"Site B",   n:112, total:917,   part:12.21,hours:2955, avgPart:26.38, avgTot:3.222},
+  {site:"Site C",   n:35,  total:2818,  part:1.24, hours:335,  avgPart:9.57,  avgTot:0.119},
+  {site:"Site D",   n:44,  total:971,   part:4.53, hours:1040, avgPart:23.63, avgTot:1.071},
+  {site:"Site E",   n:13,  total:2724,  part:0.48, hours:425,  avgPart:32.69, avgTot:0.156},
+  {site:"Site F",   n:14,  total:2890,  part:0.48, hours:379,  avgPart:27.04, avgTot:0.131},
+  {site:"Site G",   n:26,  total:3143,  part:0.83, hours:230,  avgPart:8.83,  avgTot:0.073},
+  {site:"Site H",   n:55,  total:1053,  part:5.22, hours:1443, avgPart:26.23, avgTot:1.370},
+  {site:"Site I",   n:42,  total:683,   part:6.15, hours:453,  avgPart:10.79, avgTot:0.663}
+];
+
+/* ===================== column configs (field -> renderer) ===================== */
+var EX1 = [
+  {header:"Student", field:"id", renderer:"twoLine", opts:{subField:"meta"}, sticky:true},
+  {header:"Course", field:"course", renderer:"twoLine", opts:{subField:"coursesub"}},
+  {header:"Ethnicity / Flags", field:"eth", renderer:"twoLine", opts:{subField:"flags"}},
+  {header:"Test Proficiency", field:"prof", renderer:"text", opts:{colorFn:profColor}, swap:["text","ragPill"]},
+  {header:"Grade Percent", hint:"term in progress", field:"grade", renderer:"gradeBar", opts:{max:100, target:70, colorFn:gradeColor, suffix:"%"}, swap:["gradeBar","bar","bullet","number"]},
+  {header:"Absent Days YTD", hint:"cumulative", field:"absent", renderer:"circleKPI", opts:{bandFn:absBand, colorFn:absBarColor, decimals:1, max:20}, swap:["circleKPI","bar","ragPill","number"]},
+  {header:"SSI Attendance", field:"ssiAtt", renderer:"text", opts:{colorFn:ssiColor}, swap:["text","ragPill"]},
+  {header:"Chronic Abs. Flag", field:"chronic", renderer:"thumbBinary", opts:{}},
+  {header:"Last 20 Abs. Rate", field:"last20", renderer:"rateOverBar", opts:{max:20, decimals:1, suffix:"%", colorFn:rateColor}, swap:["rateOverBar","bar","number"]},
+  {header:"SSI Behavior", field:"ssiBeh", renderer:"text", opts:{colorFn:ssiColor}, swap:["text","ragPill"]},
+  {header:"Benchmark Trend", hint:"add-on demo", field:"spark", renderer:"sparkline", opts:{}, optional:true}
+];
+
+var EX2 = [
+  {header:"School", field:"site", renderer:"text", opts:{}, sticky:true},
+  {header:"Number of Students", hint:"(total students)", field:"n", renderer:"numberSub", opts:{totalField:"total"}},
+  {header:"Student Participation", field:"part", renderer:"pie", opts:{decimals:2}},
+  {header:"Total Service Hours", field:"hours", renderer:"number", opts:{}},
+  {header:"Avg Hrs / Participating", hint:"arrow vs district", field:"avgPart", renderer:"arrow", opts:{baseline:19.59, decimals:2}},
+  {header:"Avg Hrs / Total", hint:"thumb vs goal 3.5", field:"avgTot", renderer:"thumbGoal", opts:{goal:3.5, decimals:3}}
+];
+
+/* ===================== render engine ===================== */
+function cellHTML(col,row){ var fn=RENDERERS[col.renderer]; return fn ? fn(row[col.field], col.opts||{}, row) : row[col.field]; }
+function renderTable(tableId, cols, rows){
+  var vis=cols.filter(function(c){ return !c.hidden; });
+  var html="<thead><tr>";
+  vis.forEach(function(c){ html += "<th"+(c.sticky?' class="col-head" style="text-align:left"':"")+">"+c.header+(c.hint?'<span class="hint">'+c.hint+"</span>":"")+"</th>"; });
+  html+="</tr></thead><tbody>";
+  rows.forEach(function(row){
+    html+="<tr>";
+    vis.forEach(function(c){ var cls=c.sticky?' class="col-head"':""; html+="<td"+cls+">"+cellHTML(c,row)+"</td>"; });
+    html+="</tr>";
+  });
+  html+="</tbody>";
+  document.getElementById(tableId).innerHTML=html;
+}
+
+/* ===================== Configure preview controls ===================== */
+function buildControls(){
+  var box=document.getElementById("controls");
+  var html='<div class="note">▶ Configure preview — change a column’s renderer; the table re-draws instantly (this is what the extension’s Configure… dialog does).</div>';
+  EX1.forEach(function(c,i){
+    if(!c.swap) return;
+    var opts=c.swap.map(function(r){ return '<option value="'+r+'"'+(r===c.renderer?" selected":"")+'>'+r+'</option>'; }).join("");
+    html+='<div class="grp"><span class="lbl">'+c.header+'</span><select data-col="'+i+'">'+opts+'</select></div>';
+  });
+  html+='<div class="grp"><span class="lbl">Density</span><select id="density"><option value="">Comfortable</option><option value="compact">Compact</option></select></div>';
+  html+='<label class="chk"><input type="checkbox" id="sparkToggle" checked/> Benchmark sparkline column</label>';
+  box.innerHTML=html;
+
+  box.querySelectorAll("select[data-col]").forEach(function(sel){
+    sel.addEventListener("change", function(){ EX1[+sel.getAttribute("data-col")].renderer=sel.value; renderTable("table1",EX1,ROSTER); });
+  });
+  document.getElementById("density").addEventListener("change", function(e){
+    var t1=document.getElementById("table1"), t2=document.getElementById("table2");
+    t1.className = t2.className = e.target.value;
+  });
+  document.getElementById("sparkToggle").addEventListener("change", function(e){
+    EX1.forEach(function(c){ if(c.optional) c.hidden=!e.target.checked; });
+    renderTable("table1",EX1,ROSTER);
+  });
+}
+
+/* ===================== renderer gallery ===================== */
+function buildGallery(){
+  var items=[
+    {r:"gradeBar",  v:84,   o:{max:100}, d:"progress bar"},
+    {r:"bar",       v:64,   o:{max:100, colorFn:gradeColor, suffix:""}, d:"generic bar"},
+    {r:"bullet",    v:72,   o:{max:100, target:70}, d:"bar vs target"},
+    {r:"circleKPI", v:14.5, o:{bandFn:absBand, decimals:1}, d:"KPI circle"},
+    {r:"pie",       v:12.21,o:{decimals:2}, d:"pie wedge"},
+    {r:"donut",     v:64,   o:{decimals:0, color:"var(--blue)"}, d:"donut ring"},
+    {r:"arrow",     v:26.38,o:{baseline:19.59, decimals:2}, d:"vs-baseline arrow"},
+    {r:"thumbGoal", v:3.22, o:{goal:3.5, decimals:2}, d:"thumb vs goal"},
+    {r:"thumbBinary",v:true, o:{}, d:"binary flag"},
+    {r:"rateOverBar",v:12.5,o:{max:20, decimals:1}, d:"number over bar"},
+    {r:"sparkline", v:[70,73,72,79,82,84], o:{}, d:"trend sparkline"},
+    {r:"ragPill",   v:"Meets", o:{colorFn:profColor}, d:"status pill"},
+    {r:"stackedBar",v:[{value:58,color:"var(--blue)"},{value:30,color:"#7fb3d8"},{value:12,color:"#d7dde3"}], o:{}, d:"stacked mix"},
+    {r:"numberSub", v:436, o:{totalField:"total"}, row:{total:22633}, d:"number + subtotal"}
+  ];
+  var html=items.map(function(it){
+    var cell=RENDERERS[it.r](it.v, it.o, it.row||{});
+    return '<div class="gcard"><div class="cell">'+cell+'</div><div class="gname">'+it.r+'</div><div class="gdesc">'+it.d+'</div></div>';
+  }).join("");
+  document.getElementById("gallery").innerHTML=html;
+}
+
+/* ===================== boot ===================== */
+buildControls();
+renderTable("table1", EX1, ROSTER);
+renderTable("table2", EX2, SITES);
+buildGallery();
+</script>
+</body>
+</html>
