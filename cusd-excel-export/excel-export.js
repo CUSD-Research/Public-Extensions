@@ -102,22 +102,74 @@
     return candidate;
   }
 
+  // Map the summary reader's columns onto the sheet's on-screen field order.
+  //
+  // Why this is needed: getSummaryDataReaderAsync returns its pages with the
+  // columns sorted ALPHABETICALLY, which does not match the order the fields sit
+  // in on the worksheet. getSummaryColumnsInfoAsync (Extensions API 1.13+)
+  // returns the SAME columns in view order, so we use it to derive a permutation.
+  //
+  // `readerCols` is one page's `columns` (alphabetical); `viewCols` is the view
+  // order from getSummaryColumnsInfoAsync. Returns an array of reader-column
+  // indices in view order. If the view order is unavailable (older host) or can't
+  // be matched 1:1, it returns the reader's own order so nothing breaks — the
+  // export just falls back to the previous alphabetical behaviour.
+  function buildColumnOrder(readerCols, viewCols) {
+    var identity = readerCols.map(function (_, i) { return i; });
+    if (!viewCols || !viewCols.length) { return identity; }
+
+    // Prefer fieldId (stable, unique); fall back to fieldName.
+    var byId = {}, byName = {};
+    readerCols.forEach(function (c, i) {
+      if (c.fieldId != null) { byId[c.fieldId] = i; }
+      if (byName[c.fieldName] === undefined) { byName[c.fieldName] = i; }
+    });
+
+    var order = [], seen = {};
+    viewCols.forEach(function (vc) {
+      var idx = (vc.fieldId != null && byId[vc.fieldId] !== undefined) ? byId[vc.fieldId]
+              : (byName[vc.fieldName] !== undefined ? byName[vc.fieldName] : -1);
+      if (idx === -1 || seen[idx]) { return; }
+      seen[idx] = true;
+      order.push(idx);
+    });
+    // Append any reader column the view order didn't mention, so no column is
+    // ever silently dropped.
+    for (var i = 0; i < readerCols.length; i++) {
+      if (!seen[i]) { order.push(i); }
+    }
+    // Only trust the reordering if it's a clean permutation of every column.
+    return order.length === readerCols.length ? order : identity;
+  }
+
   // Read every page of one worksheet's summary data into an array-of-arrays
-  // (first row = column headers).
+  // (first row = column headers), with columns in the sheet's on-screen order.
   async function readSheetAsAoa(worksheet) {
+    // View-order columns; the reader itself hands columns back alphabetically.
+    // Feature-detected + wrapped so an older host (< API 1.13) or an API error
+    // just falls through to the reader's order rather than failing the export.
+    var viewCols = null;
+    if (typeof worksheet.getSummaryColumnsInfoAsync === "function") {
+      try {
+        viewCols = await worksheet.getSummaryColumnsInfoAsync();
+      } catch (e) {
+        viewCols = null;
+      }
+    }
+
     var reader = await worksheet.getSummaryDataReaderAsync(10000, { ignoreSelection: true });
     try {
       var aoa = [];
-      var headerWritten = false;
+      var order = null; // reader-column indices, in view order (set on first page)
       for (var p = 0; p < reader.pageCount; p++) {
         var page = await reader.getPageAsync(p);
-        if (!headerWritten) {
-          aoa.push(page.columns.map(function (c) { return c.fieldName; }));
-          headerWritten = true;
+        if (order === null) {
+          order = buildColumnOrder(page.columns, viewCols);
+          aoa.push(order.map(function (ci) { return page.columns[ci].fieldName; }));
         }
         for (var r = 0; r < page.data.length; r++) {
           var row = page.data[r];
-          aoa.push(row.map(function (cell) { return cell.formattedValue; }));
+          aoa.push(order.map(function (ci) { return row[ci].formattedValue; }));
         }
       }
       return aoa;

@@ -21,10 +21,12 @@ with a single button whose target sheets are fixed by the dashboard author.
 - **One button → one workbook**, with one tab per allowed worksheet.
 - The author selects the allowed sheets in **Configure…**; nothing else can be exported.
 - Exports the **summary (aggregated) data shown on screen** — not row-level underlying data.
+- **Columns come out in the sheet's on-screen order**, not alphabetical. (Requires a
+  Tableau host on Extensions API **1.13+**; older hosts fall back to alphabetical.)
 - **Respects row-level security (RLS):** a viewer only ever exports the rows they
   are already permitted to see.
-- Optional **"About this export"** tab — the standard FERPA / data-handling
-  notice, a confidentiality note, the source dashboard, and a timestamp.
+- Optional **"About"** tab — the standard FERPA / data-handling notice, a
+  confidentiality note, the source dashboard, and a timestamp.
 - **Runs entirely in the browser** — the workbook is built client-side with
   SheetJS; no data is sent to any server.
 
@@ -86,8 +88,8 @@ In the **Configure…** dialog the author sets:
 
 - **Allowed sheets** — only these can be exported.
 - **File-name prefix** — the file downloads as `PREFIX_YYYYMMDD.xlsx`.
-- **"About this export" tab** — toggle on/off, plus an editable confidentiality
-  note. (The standard FERPA / data-handling notice is always included on the tab.)
+- **"About" tab** — toggle on/off, plus an editable confidentiality note.
+  (The standard FERPA / data-handling notice is always included on the tab.)
 - **Button tooltip** — hover text (the button itself is the icon).
 
 ## Privacy & security
