@@ -11,6 +11,11 @@
  * focal period (self-contained — no Tableau parameter). All periods must be left
  * in the data (don't hard-filter the year on that sheet).
  *
+ * Click-to-filter (optional): clicking a row applies its identity field
+ * (cfg.rowField) as a categorical filter to every OTHER worksheet on the
+ * dashboard that carries that field; clicking the same row again clears it.
+ * The source worksheet is always excluded so the table keeps showing every row.
+ *
  * Summary data only. No underlying-row reads. No data leaves the browser.
  */
 (function () {
@@ -33,6 +38,7 @@
   var listenersAttached = false;
   var lastMain = null;          // most recent source-sheet read {fields, rows}
   var focalPeriod = null;       // selected focal period (formatted), null = latest
+  var selectedKey = null;       // clicked row's identity (formatted), null = none
 
   /* ---------------- settings ---------------- */
   function getConfig() {
@@ -97,6 +103,7 @@
     if (!lastMain) return;
     var c2 = {}; for (var k in cfg) { if (Object.prototype.hasOwnProperty.call(cfg, k)) c2[k] = cfg[k]; }
     c2.focalPeriod = focalPeriod;
+    c2.selectedKey = selectedKey;
     tableEl.className = "kpi" + (cfg.density === "compact" ? " compact" : "");
     tableEl.innerHTML = KPI.renderTableInner(c2, lastMain.rows);
   }
@@ -163,6 +170,44 @@
     } catch (e) { /* parameters are optional */ }
   }
 
+  /* ---------------- click-to-filter (optional) ----------------
+     cfg.clickToFilter, set in Configure, turns each row into a filter driver:
+     click applies cfg.rowField=<that row's value> (Replace) to every OTHER
+     worksheet on the dashboard that carries the field; clicking the same row
+     again clears it. Worksheets without the field just throw — ignored, since
+     that's expected for sheets unrelated to this table. */
+  function findRawValueForKey(key, cfg) {
+    if (!lastMain || !cfg) return null;
+    for (var i = 0; i < lastMain.rows.length; i++) {
+      var c = lastMain.rows[i][cfg.rowField];
+      if (c && String(c.f) === key) return c.v;
+    }
+    return null;
+  }
+
+  async function applyRowFilter(cfg, key, rawValue) {
+    selectedKey = key;
+    var dashboard = tableau.extensions.dashboardContent.dashboard;
+    var targets = dashboard.worksheets.filter(function (ws) { return ws.name !== cfg.sourceSheet; });
+    for (var i = 0; i < targets.length; i++) {
+      try {
+        if (key == null) await targets[i].clearFilterAsync(cfg.rowField);
+        else await targets[i].applyFilterAsync(cfg.rowField, [rawValue], tableau.FilterUpdateType.Replace);
+      } catch (e) { /* worksheet doesn't carry this field — expected for unrelated sheets */ }
+    }
+    renderTable(cfg);
+  }
+
+  function onTableClick(evt) {
+    var cfg = getConfig();
+    if (!cfg || !cfg.clickToFilter || !cfg.rowField) return;
+    var tr = evt.target.closest ? evt.target.closest("tr[data-key]") : null;
+    if (!tr || !tableEl.contains(tr)) return;
+    var key = tr.getAttribute("data-key");
+    if (selectedKey === key) { applyRowFilter(cfg, null, null); return; }
+    applyRowFilter(cfg, key, findRawValueForKey(key, cfg));
+  }
+
   /* ---------------- export to Excel (built-in) ----------------
      Exports the source worksheet's summary data (all rows, all periods) as .xlsx
      with a FERPA About tab. Summary data only — RLS already applied. The button
@@ -217,6 +262,7 @@
   }
 
   async function openConfigure() {
+    var priorCfg = getConfig();
     var payload;
     try {
       payload = JSON.stringify({ catalog: await gatherCatalog(), current: getConfig() || {} });
@@ -232,6 +278,12 @@
         s.set(SETTINGS_KEY, closePayload); // already JSON from the dialog
         return s.saveAsync();
       })
+      .then(function () {
+        // Reconfiguring can turn click-to-filter off or change the row field —
+        // clear any filter it left behind on other worksheets before resetting.
+        if (selectedKey != null && priorCfg && priorCfg.rowField) return applyRowFilter(priorCfg, null, null);
+        selectedKey = null;
+      })
       .then(function () { focalPeriod = null; loadAndRender(); }) // reset focal to latest on reconfigure
       .catch(function (err) {
         if (err && err.errorCode === tableau.ErrorCodes.DialogClosedByUser) return;
@@ -246,6 +298,7 @@
     exportBtn = document.getElementById("exportBtn");
     yearSelect = document.getElementById("yearSelect");
     if (exportBtn) exportBtn.addEventListener("click", onExport);
+    tableEl.addEventListener("click", onTableClick);
     applyExportUI(getConfig());
 
     tableau.extensions.initializeAsync({ configure: openConfigure })
