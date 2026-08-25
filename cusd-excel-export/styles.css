@@ -66,7 +66,7 @@ body {
 /* ---- configure dialog ---- */
 .cfg {
   padding: 16px 18px;
-  max-width: 460px;
+  max-width: 580px;
 }
 .cfg h1 { font-size: 16px; margin: 0 0 4px; color: var(--cusd-navy); }
 .cfg p.help { font-size: 12px; color: var(--cusd-gray); margin: 0 0 14px; }
@@ -80,3 +80,17 @@ body {
 .cfg .btn-secondary { background: #fff; color: var(--cusd-navy); border: 1px solid var(--cusd-navy); }
 .cfg .btn-secondary:hover { background: #eef2fb; }
 .cfg .empty { font-size: 12px; color: var(--cusd-gray); font-style: italic; }
+
+/* Per-sheet panel: columns to include + layout. Only rendered for a ticked
+   sheet, and indented under it so the allow-list stays the top-level choice. */
+.cfg .sheet-block { border-bottom: 1px solid var(--cusd-line); padding: 6px 0; }
+.cfg .sheet-block:last-child { border-bottom: none; }
+.cfg .sheet-row { font-weight: 600; }
+.cfg .sheet-panel:not(:empty) { margin: 4px 0 10px 24px; }
+.cfg .sub-block { margin: 8px 0; }
+.cfg .sub-title { font-size: 12px; font-weight: 600; color: var(--cusd-navy); margin: 8px 0 2px; }
+.cfg .sub-block p.help { margin: 0 0 4px; }
+.cfg .col-list { max-height: 190px; overflow-y: auto; border: 1px solid var(--cusd-line); border-radius: 4px; padding: 4px 8px; }
+.cfg .col-row { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 2px 0; }
+.cfg select { width: 100%; padding: 5px 8px; font: inherit; border: 1px solid var(--cusd-line); border-radius: 4px; }
+.cfg p.warn { color: #8a5300; }

@@ -3,8 +3,9 @@
  * --------------------------------------
  * A Tableau Dashboard Extension that adds a one-click "Download to Excel" button.
  * The dashboard author decides (via the Configure… dialog) WHICH worksheets the
- * button is allowed to export. End users click once and get an .xlsx — no
- * sheet-selection dialog.
+ * button is allowed to export, WHICH columns come along, and WHETHER the file is
+ * a flat table or a crosstab shaped like the worksheet. End users click once and
+ * get an .xlsx — no prompts.
  *
  * Guardrails baked in for CUSD:
  *   1. Allow-list only. The button exports ONLY worksheets the author explicitly
@@ -13,6 +14,12 @@
  *      shown on screen), never the row-level underlying data. RLS is respected
  *      automatically because we read what the signed-in user already sees.
  *   3. Optional confidentiality "About" tab + a CUSD-convention file name.
+ *
+ * BACK-COMPATIBILITY: every workbook already running this extension pulls this
+ * file from the hosted URL, so changes here reach all of them at once. Column
+ * exclusions and the crosstab layout are therefore stored per workbook and
+ * default to "every column, flat table" — an existing workbook that never opens
+ * Configure again behaves exactly as it did before.
  *
  * No district data leaves the browser: data is read from the rendered viz and
  * written straight into a local file with SheetJS.
@@ -23,6 +30,7 @@
   // Settings keys (stored per-extension-instance via tableau.extensions.settings).
   var KEYS = {
     allowedSheets: "allowedSheets",   // JSON array of worksheet names
+    sheetConfig: "sheetConfig",       // JSON { sheetName: {exclude, across, value} }
     filenamePrefix: "filenamePrefix", // string
     includeFooter: "includeFooter",   // "true" / "false"
     footerText: "footerText",         // string
@@ -62,14 +70,30 @@
     return (v === undefined || v === null) ? fallback : v;
   }
 
-  function getAllowedSheets() {
+  function getJsonSetting(key, fallback) {
     try {
-      var raw = tableau.extensions.settings.get(KEYS.allowedSheets);
-      var arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
+      var raw = tableau.extensions.settings.get(key);
+      return raw ? JSON.parse(raw) : fallback;
     } catch (e) {
-      return [];
+      return fallback;
     }
+  }
+
+  function getAllowedSheets() {
+    var arr = getJsonSetting(KEYS.allowedSheets, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  // Per-sheet column/layout choices. Absent (a workbook configured before this
+  // existed) means "every column, flat table" — the previous behaviour.
+  function getSheetConfig(sheetName) {
+    var all = getJsonSetting(KEYS.sheetConfig, {}) || {};
+    var cfg = all[sheetName] || {};
+    return {
+      exclude: Array.isArray(cfg.exclude) ? cfg.exclude : [],
+      across: Array.isArray(cfg.across) ? cfg.across : [],
+      value: typeof cfg.value === "string" ? cfg.value : ""
+    };
   }
 
   // The button is icon-only (the Excel glyph), so the label is exposed as the
@@ -100,6 +124,97 @@
     }
     used[candidate.toLowerCase()] = true;
     return candidate;
+  }
+
+  // --- header names ---------------------------------------------------------
+  // Tableau hands back the pill caption, so a measure arrives as "AVG(Pct At
+  // Above)" and a dimension pinned to one value as "ATTR(Common Name)". Nobody
+  // reading the spreadsheet wants the aggregation wrapper, so strip it.
+  //
+  // Only this closed list is unwrapped, and only when it wraps the WHOLE name.
+  // Date parts (YEAR(...), MONTH(...)) and anything unrecognised are left alone,
+  // because there the wrapper is part of what the column means.
+  var AGG_WRAPPER = /^(AGG|ATTR|SUM|AVG|MIN|MAX|CNT|CNTD|COUNT|COUNTD|MEDIAN|PCT|PERCENTILE|STDEV|STDEVP|VAR|VARP|TOTAL)\s*\((.*)\)$/i;
+
+  function prettyHeader(name) {
+    var s = String(name === null || name === undefined ? "" : name).trim();
+    // Nested wrappers (AGG(SUM(x))) do happen; unwrap a few times, never forever.
+    for (var i = 0; i < 5 && AGG_WRAPPER.test(s); i++) {
+      s = s.replace(AGG_WRAPPER, "$2").trim();
+    }
+    return s || String(name);
+  }
+
+  // Two different pills can clean to the same word (a dimension on Rows and the
+  // same field as ATTR() on Tooltip). Keep the first; fall back to the raw pill
+  // caption for the collision rather than shipping two identical headers.
+  function uniqueHeaders(rawNames) {
+    var used = {}, out = [];
+    rawNames.forEach(function (raw) {
+      var name = prettyHeader(raw);
+      if (used[name.toLowerCase()]) { name = String(raw); }
+      var candidate = name, i = 2;
+      while (used[candidate.toLowerCase()]) { candidate = name + " (" + i + ")"; i++; }
+      used[candidate.toLowerCase()] = true;
+      out.push(candidate);
+    });
+    return out;
+  }
+
+  // --- cell values ----------------------------------------------------------
+  // A cell is { v: string|number, z: excel-number-format|undefined }.
+  var EMPTY = { v: "" };
+
+  function repeatZeros(n) {
+    var s = "";
+    for (var i = 0; i < n; i++) { s += "0"; }
+    return s;
+  }
+
+  // Keep a number a NUMBER in Excel (so it sorts and averages), and rebuild the
+  // number format from the way Tableau formatted that same value, so a percent
+  // still reads as a percent in the spreadsheet instead of arriving as text.
+  function numericCell(value, text) {
+    var digits = text.replace(/[^0-9.\-]/g, "");
+    var parsed = parseFloat(digits);
+    if (!isFinite(parsed)) { return { v: value }; }
+
+    var dot = digits.indexOf(".");
+    var decimals = dot === -1 ? 0 : Math.min(digits.length - dot - 1, 6);
+    var body = (/\d,\d{3}/.test(text) ? "#,##0" : "0") + (decimals ? "." + repeatZeros(decimals) : "");
+
+    if (/%\s*$/.test(text)) {
+      // Tableau can reach "60.4%" from either 60.4 (a plain number carrying a
+      // "%" suffix in its format) or 0.604 (a true percentage). Excel's percent
+      // format multiplies by 100, so guessing wrong is off by 100x — decide by
+      // checking which of the two the underlying value actually is.
+      // Compare magnitudes: a negative reaches us as "-5.0%" from -0.05, so the
+      // sign is on both sides and only the scale is in question.
+      var magnitude = Math.abs(value);
+      var tolerance = magnitude * 1e-4 + 1e-9;
+      var asIs = Math.abs(Math.abs(parsed) - magnitude) <= tolerance;
+      var scaled = Math.abs(Math.abs(parsed) - magnitude * 100) <= tolerance * 100;
+      if (asIs) { return { v: value, z: body + '"%"' }; }
+      if (scaled) { return { v: value, z: body + "%" }; }
+      return { v: value, z: body + '"%"' };
+    }
+    if (/^\s*[-(]?\s*\$/.test(text)) { return { v: value, z: '"$"' + body }; }
+    return { v: value, z: body };
+  }
+
+  // Null must land as a genuinely empty cell — never the word "null", which is
+  // what a straight formattedValue read produces.
+  function toCell(dv) {
+    if (!dv) { return EMPTY; }
+    var raw = dv.value;
+    if (raw === null || raw === undefined) { return EMPTY; }
+    var text = dv.formattedValue;
+    if (text === null || text === undefined) { return EMPTY; }
+    text = String(text);
+    var trimmed = text.trim();
+    if (trimmed === "" || trimmed.toLowerCase() === "%null%") { return EMPTY; }
+    if (typeof raw === "number" && isFinite(raw)) { return numericCell(raw, text); }
+    return { v: text };
   }
 
   // Map the summary reader's columns onto the sheet's on-screen field order.
@@ -142,9 +257,9 @@
     return order.length === readerCols.length ? order : identity;
   }
 
-  // Read every page of one worksheet's summary data into an array-of-arrays
-  // (first row = column headers), with columns in the sheet's on-screen order.
-  async function readSheetAsAoa(worksheet) {
+  // Read every page of one worksheet's summary data, in the sheet's on-screen
+  // column order, as { headers: [cleaned names], rows: [[cell, …]] }.
+  async function readSheet(worksheet) {
     // View-order columns; the reader itself hands columns back alphabetically.
     // Feature-detected + wrapped so an older host (< API 1.13) or an API error
     // just falls through to the reader's order rather than failing the export.
@@ -159,23 +274,177 @@
 
     var reader = await worksheet.getSummaryDataReaderAsync(10000, { ignoreSelection: true });
     try {
-      var aoa = [];
+      var headers = null, rows = [];
       var order = null; // reader-column indices, in view order (set on first page)
       for (var p = 0; p < reader.pageCount; p++) {
         var page = await reader.getPageAsync(p);
         if (order === null) {
           order = buildColumnOrder(page.columns, viewCols);
-          aoa.push(order.map(function (ci) { return page.columns[ci].fieldName; }));
+          headers = uniqueHeaders(order.map(function (ci) { return page.columns[ci].fieldName; }));
         }
         for (var r = 0; r < page.data.length; r++) {
           var row = page.data[r];
-          aoa.push(order.map(function (ci) { return row[ci].formattedValue; }));
+          rows.push(order.map(function (ci) { return toCell(row[ci]); }));
         }
       }
-      return aoa;
+      return { headers: headers || [], rows: rows };
     } finally {
       await reader.releaseAsync(); // free the reader even if a page errors
     }
+  }
+
+  // --- layout ---------------------------------------------------------------
+  // A grid is { aoa, fmt, merges }: values, a parallel matrix of Excel number
+  // formats, and any header merges. Kept parallel rather than handing SheetJS
+  // cell objects, because aoa_to_sheet reads plain values.
+  function newGrid() {
+    return { aoa: [], fmt: [], merges: [] };
+  }
+
+  function pushRow(grid, cells) {
+    grid.aoa.push(cells.map(function (c) { return c.v; }));
+    grid.fmt.push(cells.map(function (c) { return c.z; }));
+  }
+
+  function keepIndices(headers, exclude) {
+    var drop = {};
+    (exclude || []).forEach(function (n) { drop[String(n).toLowerCase()] = true; });
+    var keep = [];
+    headers.forEach(function (h, i) { if (!drop[h.toLowerCase()]) { keep.push(i); } });
+    // Never let a stale config empty the sheet out entirely.
+    return keep.length ? keep : headers.map(function (_, i) { return i; });
+  }
+
+  function flatGrid(headers, rows, keep) {
+    var grid = newGrid();
+    pushRow(grid, keep.map(function (i) { return { v: headers[i] }; }));
+    rows.forEach(function (row) {
+      pushRow(grid, keep.map(function (i) { return row[i] || EMPTY; }));
+    });
+    return grid;
+  }
+
+  // Rebuild the worksheet's crosstab shape: the author's "across" field(s) become
+  // stacked header rows, every other kept field becomes a row header, and the
+  // chosen value field fills the body.
+  //
+  // The Extensions API does NOT expose which fields sit on Rows vs Columns — the
+  // visual specification covers the marks card only — so this layout is declared
+  // in Configure rather than inferred. Column and row order follow first
+  // appearance in the summary data, which is the order the viz hands back.
+  function crosstabGrid(headers, rows, keep, acrossNames, valueName) {
+    var byName = {};
+    keep.forEach(function (i) { byName[headers[i].toLowerCase()] = i; });
+
+    var acrossIdx = [];
+    (acrossNames || []).forEach(function (n) {
+      var i = byName[String(n).toLowerCase()];
+      if (i !== undefined && acrossIdx.indexOf(i) === -1) { acrossIdx.push(i); }
+    });
+    var valueIdx = byName[String(valueName || "").toLowerCase()];
+
+    // Not enough of the declared layout survives (fields renamed or removed) —
+    // fall back to the flat table rather than emit a broken crosstab.
+    if (!acrossIdx.length || valueIdx === undefined) { return flatGrid(headers, rows, keep); }
+
+    var downIdx = keep.filter(function (i) {
+      return acrossIdx.indexOf(i) === -1 && i !== valueIdx;
+    });
+
+    // Unit separator: a delimiter no school, grade or period label contains.
+    var SEP = "\u001F";
+
+    function text(cell) {
+      return String(cell && cell.v !== undefined && cell.v !== null ? cell.v : "");
+    }
+    function joinKey(row, idxs) {
+      return idxs.map(function (i) { return text(row[i]); }).join(SEP);
+    }
+
+    var colKeys = [], colSeen = {}, colParts = {};
+    var rowKeys = [], rowSeen = {}, rowCells = {};
+    var body = {};
+
+    rows.forEach(function (row) {
+      var ck = joinKey(row, acrossIdx);
+      if (!colSeen[ck]) {
+        colSeen[ck] = true;
+        colKeys.push(ck);
+        colParts[ck] = acrossIdx.map(function (i) { return row[i] || EMPTY; });
+      }
+      var rk = joinKey(row, downIdx);
+      if (!rowSeen[rk]) {
+        rowSeen[rk] = true;
+        rowKeys.push(rk);
+        rowCells[rk] = downIdx.map(function (i) { return row[i] || EMPTY; });
+      }
+      body[rk + SEP + ck] = row[valueIdx] || EMPTY;
+    });
+
+    var grid = newGrid();
+
+    // One header row per "across" field. The row-header captions sit in the last
+    // header row, directly above the values they label — the way the viz reads.
+    acrossIdx.forEach(function (_, level) {
+      var isLast = level === acrossIdx.length - 1;
+      var cells = downIdx.map(function (i) { return isLast ? { v: headers[i] } : EMPTY; });
+      colKeys.forEach(function (ck) { cells.push(colParts[ck][level] || EMPTY); });
+      pushRow(grid, cells);
+
+      // Merge runs of the same caption (BOY spanning its three years). Merges are
+      // structure, not styling, so the community SheetJS build writes them fine.
+      var start = 0;
+      for (var c = 1; c <= colKeys.length; c++) {
+        var here = c < colKeys.length ? text(colParts[colKeys[c]][level]) : null;
+        var run = text(colParts[colKeys[start]][level]);
+        if (here !== run) {
+          if (c - start > 1) {
+            grid.merges.push({
+              s: { r: level, c: downIdx.length + start },
+              e: { r: level, c: downIdx.length + c - 1 }
+            });
+          }
+          start = c;
+        }
+      }
+    });
+
+    rowKeys.forEach(function (rk) {
+      var cells = rowCells[rk].slice();
+      colKeys.forEach(function (ck) { cells.push(body[rk + SEP + ck] || EMPTY); });
+      pushRow(grid, cells);
+    });
+
+    return grid;
+  }
+
+  // Column widths from the widest thing in each column — the community SheetJS
+  // build ignores fonts and fills but honours !cols, so this is the one bit of
+  // presentation that actually survives the write.
+  function columnWidths(grid) {
+    var widths = [];
+    grid.aoa.forEach(function (row) {
+      row.forEach(function (v, c) {
+        var len = String(v === null || v === undefined ? "" : v).length;
+        if (!widths[c] || widths[c] < len) { widths[c] = len; }
+      });
+    });
+    return widths.map(function (w) { return { wch: Math.min(Math.max((w || 4) + 2, 9), 46) }; });
+  }
+
+  function sheetFromGrid(grid) {
+    var ws = XLSX.utils.aoa_to_sheet(grid.aoa);
+    for (var r = 0; r < grid.fmt.length; r++) {
+      for (var c = 0; c < grid.fmt[r].length; c++) {
+        var z = grid.fmt[r][c];
+        if (!z) { continue; }
+        var cell = ws[XLSX.utils.encode_cell({ r: r, c: c })];
+        if (cell && cell.t === "n") { cell.z = z; }
+      }
+    }
+    if (grid.merges.length) { ws["!merges"] = grid.merges; }
+    ws["!cols"] = columnWidths(grid);
+    return ws;
   }
 
   function buildFilename() {
@@ -210,9 +479,13 @@
         var name = allowed[i];
         var ws = byName[name];
         if (!ws) { continue; } // author enabled a sheet that no longer exists — skip quietly
-        var aoa = await readSheetAsAoa(ws);
-        var sheet = XLSX.utils.aoa_to_sheet(aoa);
-        XLSX.utils.book_append_sheet(wb, sheet, safeSheetName(name, usedNames));
+        var data = await readSheet(ws);
+        var cfg = getSheetConfig(name);
+        var keep = keepIndices(data.headers, cfg.exclude);
+        var grid = cfg.across.length
+          ? crosstabGrid(data.headers, data.rows, keep, cfg.across, cfg.value)
+          : flatGrid(data.headers, data.rows, keep);
+        XLSX.utils.book_append_sheet(wb, sheetFromGrid(grid), safeSheetName(name, usedNames));
         exported++;
       }
 
@@ -254,12 +527,73 @@
   // --- Configure… dialog launch (author-only) -------------------------------
   // Registered via the `configure` callback below; Tableau wires it to the
   // "Configure…" context-menu item declared in the .trex manifest.
-  function openConfigure() {
+
+  // Best effort: which fields sit ONLY on the marks card's Tooltip shelf. Those
+  // are the ones an author almost never wants in the spreadsheet, so they get
+  // pre-unticked. getVisualSpecificationAsync's payload is host-supplied, so
+  // everything here is duck-typed and wrapped — an older host or an unexpected
+  // shape just means no suggestion, never a broken dialog.
+  async function tooltipOnlyFields(worksheet) {
+    var out = {};
+    try {
+      if (typeof worksheet.getVisualSpecificationAsync !== "function") { return out; }
+      var spec = await worksheet.getVisualSpecificationAsync();
+      var cards = (spec && (spec.marksSpecifications || spec.marksSpecification)) || [];
+      var onTooltip = {}, elsewhere = {};
+      cards.forEach(function (card) {
+        var encodings = (card && (card.encodings || card.marksEncodings)) || [];
+        encodings.forEach(function (enc) {
+          if (!enc || !enc.field) { return; }
+          var fieldName = enc.field.name || enc.field.fieldName;
+          if (!fieldName) { return; }
+          var bucket = String(enc.id).toLowerCase() === "tooltip" ? onTooltip : elsewhere;
+          bucket[prettyHeader(fieldName).toLowerCase()] = true;
+        });
+      });
+      // A field on Tooltip *and* on Text/Color is doing visible work — only the
+      // tooltip-exclusive ones get suggested for removal.
+      Object.keys(onTooltip).forEach(function (n) { if (!elsewhere[n]) { out[n] = true; } });
+    } catch (e) { /* no suggestion */ }
+    return out;
+  }
+
+  // Sort helpers exist to drive the viz, not to be read — suggest dropping them.
+  function looksLikeSortField(header) {
+    return /\bsort\b/i.test(header);
+  }
+
+  async function describeSheet(worksheet) {
+    var headers = [];
+    try {
+      if (typeof worksheet.getSummaryColumnsInfoAsync === "function") {
+        var cols = await worksheet.getSummaryColumnsInfoAsync();
+        headers = uniqueHeaders((cols || []).map(function (c) { return c.fieldName; }));
+      }
+    } catch (e) {
+      headers = [];
+    }
+    var tooltipOnly = await tooltipOnlyFields(worksheet);
+    return {
+      name: worksheet.name,
+      columns: headers,
+      suggestExclude: headers.filter(function (h) {
+        return looksLikeSortField(h) || tooltipOnly[h.toLowerCase()];
+      })
+    };
+  }
+
+  async function openConfigure() {
     var dashboard = tableau.extensions.dashboardContent.dashboard;
+    var sheets = [];
+    for (var i = 0; i < dashboard.worksheets.length; i++) {
+      sheets.push(await describeSheet(dashboard.worksheets[i]));
+    }
+
     var payload = JSON.stringify({
-      sheetNames: dashboard.worksheets.map(function (w) { return w.name; }),
+      sheets: sheets,
       current: {
         allowedSheets: getAllowedSheets(),
+        sheetConfig: getJsonSetting(KEYS.sheetConfig, {}) || {},
         filenamePrefix: getSetting(KEYS.filenamePrefix, "CUSD_Export"),
         includeFooter: getSetting(KEYS.includeFooter, "true") === "true",
         footerText: getSetting(KEYS.footerText, DEFAULT_FOOTER),
@@ -268,7 +602,7 @@
     });
     var url = new URL("./configure.html", window.location.href).href;
 
-    tableau.extensions.ui.displayDialogAsync(url, payload, { height: 520, width: 500 })
+    return tableau.extensions.ui.displayDialogAsync(url, payload, { height: 660, width: 620 })
       .then(function (closePayload) {
         // The dialog returns the chosen config as JSON; the parent saves it.
         // "cancel" (or an empty payload) means the author backed out — leave settings as-is.
@@ -276,6 +610,7 @@
         var cfg = JSON.parse(closePayload);
         var s = tableau.extensions.settings;
         s.set(KEYS.allowedSheets, JSON.stringify(cfg.allowedSheets || []));
+        s.set(KEYS.sheetConfig, JSON.stringify(cfg.sheetConfig || {}));
         s.set(KEYS.filenamePrefix, cfg.filenamePrefix || "CUSD_Export");
         s.set(KEYS.includeFooter, cfg.includeFooter ? "true" : "false");
         s.set(KEYS.footerText, cfg.footerText || DEFAULT_FOOTER);

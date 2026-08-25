@@ -23,6 +23,20 @@ with a single button whose target sheets are fixed by the dashboard author.
 - Exports the **summary (aggregated) data shown on screen** — not row-level underlying data.
 - **Columns come out in the sheet's on-screen order**, not alphabetical. (Requires a
   Tableau host on Extensions API **1.13+**; older hosts fall back to alphabetical.)
+- **Only the columns the author keeps.** A viz carries far more fields than it
+  shows — everything on the Tooltip shelf, plus the sort helpers that drive row
+  order. Those are ticked off in Configure, and tooltip-only fields and anything
+  named `… Sort` start unticked.
+- **Readable headers.** The pill caption's aggregation wrapper is stripped, so
+  `AVG(Pct At Above)` becomes `Pct At Above` and `ATTR(Common Name)` becomes
+  `Common Name`. Date parts (`YEAR(...)`) are left alone — there the wrapper is
+  part of what the column means.
+- **Numbers stay numbers, percentages stay percentages.** Values are written as
+  real numbers carrying an Excel number format rebuilt from Tableau's own
+  formatting, so a column of percents can still be sorted and averaged.
+- **Nulls are empty cells**, never the word `null`.
+- **Optional crosstab layout** — the file can match the shape of the worksheet
+  (fields stacked across the top, values in the body) instead of a flat table.
 - **Respects row-level security (RLS):** a viewer only ever exports the rows they
   are already permitted to see.
 - Optional **"About"** tab — the standard FERPA / data-handling notice, a
@@ -53,6 +67,7 @@ code — no viewer data ever passes through it.**
 | `excel-export.js` | Button logic: read allowed sheets → build `.xlsx` → download. |
 | `configure.html` / `configure.js` | The author-only **Configure…** dialog (choose sheets + options). |
 | `styles.css` | Minimal styling. |
+| `../../tests/test_excel_export_extension.js` | Offline regression harness for the header / number-format / layout logic (`node tests/test_excel_export_extension.js`). |
 | `icon.svg` / `icon.png` / `make_icon.py` | Icon source (SVG) + rendered PNG + a small script that re-renders the PNG and embeds it in the `.trex`. |
 | `lib/` | Tableau Extensions API (vendored). |
 | `vendor/` | SheetJS / `xlsx` (vendored). |
@@ -87,10 +102,38 @@ allow-list is only required for Tableau Cloud / published workbooks.
 In the **Configure…** dialog the author sets:
 
 - **Allowed sheets** — only these can be exported.
+- **Columns to include** (per sheet) — everything the viz carries is listed;
+  untick what shouldn't reach the spreadsheet. Tooltip-only fields and sort
+  helpers start unticked.
+- **Layout** (per sheet) — *flat table* (one row per mark) or *match the
+  worksheet*: pick the field(s) that run across the top and the field that fills
+  the cells, and the export comes out as that crosstab, repeated header rows
+  merged the way the viz reads.
 - **File-name prefix** — the file downloads as `PREFIX_YYYYMMDD.xlsx`.
 - **"About" tab** — toggle on/off, plus an editable confidentiality note.
   (The standard FERPA / data-handling notice is always included on the tab.)
 - **Button tooltip** — hover text (the button itself is the icon).
+
+### Why the layout is declared rather than detected
+
+The Extensions API exposes the **marks card** (Color, Text, Detail, Tooltip …)
+through `getVisualSpecificationAsync`, which is how tooltip-only fields are
+spotted. It does **not** expose which fields sit on the **Rows** shelf versus the
+**Columns** shelf, and summary data always arrives long/tall. So a crosstab has
+to be described once by the author; there is nothing to infer it from.
+
+## Upgrading an existing dashboard
+
+The hosted code is shared, so a change here reaches **every** workbook running
+this extension the next time it loads. That upgrade is deliberately split:
+
+| Behaviour | Applies |
+|---|---|
+| Header cleanup, empty cells for nulls, numeric/percent formatting | Immediately, everywhere — no re-configure |
+| Column exclusions, crosstab layout | Only after an author opens **Configure…** on that workbook and saves |
+
+A workbook that is never re-configured keeps exporting every column as a flat
+table, exactly as before.
 
 ## Privacy & security
 
@@ -110,7 +153,11 @@ add a license file if you intend to redistribute it.
 ## Limitations / ideas
 
 - Summary data only (by design) — no underlying-row export.
-- One tab per allowed sheet; no per-sheet column picker yet.
+- One tab per allowed sheet.
+- The crosstab supports **one** value field per sheet; a viz showing two measures
+  side by side still needs the flat layout.
+- Crosstab row and column order follow the order the summary data arrives in,
+  which is the viz's own order — there is no separate sort control.
 - File name is `prefix + date`; pulling a field value into the name is a possible enhancement.
 - To change the icon, edit `icon.svg` then run `python3 make_icon.py`
   (needs `pip install cairosvg Pillow`).
