@@ -426,6 +426,25 @@
     var rowConstant = keys.map(function () { return true; });
     var colConstant = keys.map(function () { return true; });
 
+    // Each axis is then ordered by its OWN fields, in the order they are stacked
+    // — this is what makes the crosstab group the way the worksheet groups. With
+    // Benchmark Period above School Year, all of BOY's years sit together and
+    // BOY merges across them; ordering by the year first instead would group by
+    // year and leave every period heading standing alone, which is the same
+    // header rows arranged into a different table.
+    //
+    // The ordering value is each value's FIRST-APPEARANCE rank, not the value
+    // itself: the data already arrives BOY, MOY, EOY and alphabetising that
+    // would read BOY, EOY, MOY. So this imposes the nesting without inventing an
+    // order inside a level.
+    var ranks = {};
+    function rankOf(i, cell) {
+      var reg = ranks[i] || (ranks[i] = { next: 0, map: {} });
+      var t = text(cell);
+      if (reg.map[t] === undefined) { reg.map[t] = reg.next++; }
+      return reg.map[t];
+    }
+
     function noteConstancy(store, groupKey, row, flags) {
       var prior = store[groupKey];
       if (!prior) {
@@ -438,6 +457,9 @@
     }
 
     rows.forEach(function (row) {
+      acrossIdx.forEach(function (i) { rankOf(i, row[i] || EMPTY); });
+      downIdx.forEach(function (i) { rankOf(i, row[i] || EMPTY); });
+
       var ck = joinKey(row, acrossIdx);
       if (!colSeen[ck]) {
         colSeen[ck] = true;
@@ -457,15 +479,29 @@
       body[rk + SEP + ck] = row[valueIdx] || EMPTY;
     });
 
-    // The per-group cells collected above are indexed by POSITION IN keys, not
-    // by header index, so the comparator gets keys re-pointed at those positions.
-    function axisKeys(flags) {
+    // One ordering tuple per group: the sort-key cells first, then one
+    // first-appearance rank per axis field, in stacking order. Positions are
+    // fixed, so the comparator addresses them by index rather than by name.
+    function tuple(sortCells, partCells, idxs) {
+      return sortCells.concat(partCells.map(function (cell, p) {
+        return { v: rankOf(idxs[p], cell) };
+      }));
+    }
+    var colTuple = {}, rowTuple = {};
+    colKeys.forEach(function (ck) { colTuple[ck] = tuple(colSortCells[ck], colParts[ck], acrossIdx); });
+    rowKeys.forEach(function (rk) { rowTuple[rk] = tuple(rowSortCells[rk], rowCells[rk], downIdx); });
+
+    // An explicit sort key outranks the field's own order — that is the point of
+    // designating one — but only on the axis it is constant along. The stacking
+    // ranks follow, and settle everything the keys leave tied.
+    function axisComparator(flags, idxs) {
       var out = [];
       keys.forEach(function (k, n) { if (flags[n]) { out.push({ idx: n, desc: k.desc }); } });
+      idxs.forEach(function (_, j) { out.push({ idx: keys.length + j, desc: false }); });
       return out;
     }
-    rowKeys = sortByKeys(rowKeys, axisKeys(rowConstant), function (rk) { return rowSortCells[rk]; });
-    colKeys = sortByKeys(colKeys, axisKeys(colConstant), function (ck) { return colSortCells[ck]; });
+    rowKeys = sortByKeys(rowKeys, axisComparator(rowConstant, downIdx), function (rk) { return rowTuple[rk]; });
+    colKeys = sortByKeys(colKeys, axisComparator(colConstant, acrossIdx), function (ck) { return colTuple[ck]; });
 
     var grid = newGrid();
 

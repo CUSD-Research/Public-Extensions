@@ -115,7 +115,9 @@ Then, **per sheet**, three numbered steps:
    have to be in the file** — that is the point of it.
 3. **How the file is laid out** — a plain table (one row per mark), or a crosstab
    like the worksheet: name the field(s) that run across the top and the field
-   that fills the cells.
+   that fills the cells. **The order you tick the across-the-top fields decides
+   how the table groups** — `Benchmark Period` then `School Year` gives one `BOY`
+   heading spanning its years; the other way round groups by year instead.
 - **File-name prefix** — the file downloads as `PREFIX_YYYYMMDD.xlsx`.
 - **"About" tab** — toggle on/off, plus an editable confidentiality note.
   (The standard FERPA / data-handling notice is always included on the tab.)
@@ -130,11 +132,15 @@ For a sheet with `School` and `Grade` on Rows, `Benchmark Period` and
 |---|---|
 | 1. What goes in the file | `School`, `Grade`, `Benchmark Period`, `School Year`, `Pct At Above`. Leave the tooltip fields and `Location Sort` / `Grade Sort` unticked. |
 | 2. What order | `Location Sort`, then `Grade Sort` — both unticked in step 1, both still obeyed. |
-| 3. Layout | *Like the worksheet*; across the top `Benchmark Period` then `School Year`; cells `Pct At Above`. |
+| 3. Layout | *Like the worksheet*; across the top `Benchmark Period` **then** `School Year`; cells `Pct At Above`. |
 
 Result: `DISTRICT` first then schools in the viz's own order, `ALL GRADES` above
-`KG` above `GRADE 1`, one merged `BOY` heading spanning its years, and
-percentages Excel can average.
+`KG` above `GRADE 1`, one merged `BOY` heading spanning 2025/2026/2027 followed
+by `MOY` over its own years, and percentages Excel can average.
+
+Tick `School Year` first instead and the same data comes out grouped by year,
+with each year spanning `BOY`/`MOY`/`EOY`. Neither is more correct — the stack
+order is the choice.
 
 ### Why layout and sort are declared rather than detected
 
@@ -159,6 +165,13 @@ In a crosstab, a sort key orders whichever axis it is *constant* along: a grade
 sort varies down the rows and reads the same across, so it orders rows; a period
 sort that varies across the top orders columns. A key constant along neither
 disagrees with itself inside one cell and is ignored rather than guessed at.
+
+**Below the sort keys, each axis is ordered by its own stacked fields, outermost
+first** — that is what makes the crosstab *group* the way the worksheet groups
+rather than merely carry the same header rows. The ordering value inside a level
+is each value's first appearance in the data, not the value itself: the data
+already arrives `BOY`, `MOY`, `EOY`, and alphabetising it would read `BOY`, `EOY`,
+`MOY`.
 
 ## Upgrading an existing dashboard
 

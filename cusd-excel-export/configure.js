@@ -32,7 +32,7 @@
   var buttonLabelEl = document.getElementById("buttonLabel");
 
   // sheetName -> { allowed, columns, exclude:{name:true}, sort:[{field,dir}],
-  //               across:{name:true}, value, pendingCrosstab }
+  //               across:[name], value, pendingCrosstab }
   var state = {};
   var order = [];
 
@@ -52,6 +52,10 @@
       if (st.sort[i].field === name) { return i; }
     }
     return -1;
+  }
+
+  function acrossPosition(st, name) {
+    return st.across.indexOf(name);
   }
 
   function checkboxRow(labelText, checked, onChange) {
@@ -90,7 +94,8 @@
         if (on) { delete st.exclude[name]; }
         else {
           st.exclude[name] = true;
-          delete st.across[name];
+          var ap = acrossPosition(st, name);
+          if (ap !== -1) { st.across.splice(ap, 1); }
           if (st.value === name) { st.value = ""; }
         }
         renderPanel(st, panel);
@@ -155,7 +160,7 @@
       radio.checked = (opt.key === "cross") === !!st.pendingCrosstab;
       radio.addEventListener("change", function () {
         st.pendingCrosstab = opt.key === "cross";
-        if (!st.pendingCrosstab) { st.across = {}; st.value = ""; }
+        if (!st.pendingCrosstab) { st.across = []; st.value = ""; }
         renderPanel(st, panel);
       });
       row.appendChild(radio);
@@ -168,13 +173,23 @@
 
       layoutBlock.appendChild(el("div", "sub-title", "Fields across the top"));
       layoutBlock.appendChild(el("p", "help",
-        "The same fields that sit on the Columns shelf of the worksheet — one header row each, top to bottom in the order you tick them. Repeated headings merge, so a period spanning three years reads as one heading. Everything else you kept becomes a row heading on the left."));
+        "The same fields that sit on the Columns shelf of the worksheet — one header row each, top to bottom in the order you tick them. THE ORDER DECIDES HOW THE TABLE GROUPS: tick Benchmark Period then School Year and each period spans its years as one merged heading, the way the worksheet reads. Tick them the other way round and the file groups by year instead. Everything else you kept becomes a row heading on the left."));
       included.forEach(function (name) {
         if (name === st.value) { return; }
-        layoutBlock.appendChild(checkboxRow(name, !!st.across[name], function (on) {
-          if (on) { st.across[name] = true; } else { delete st.across[name]; }
+        var pos = acrossPosition(st, name);
+        var row = el("label", "col-row");
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = pos !== -1;
+        cb.addEventListener("change", function () {
+          if (cb.checked) { st.across.push(name); }
+          else { st.across.splice(acrossPosition(st, name), 1); }
           renderPanel(st, panel);
-        }));
+        });
+        row.appendChild(cb);
+        row.appendChild(el("span", "sort-rank", pos === -1 ? "" : String(pos + 1) + "."));
+        row.appendChild(el("span", null, pos === 0 ? name + "   (top row)" : name));
+        layoutBlock.appendChild(row);
       });
 
       layoutBlock.appendChild(el("div", "sub-title", "Field that fills the cells"));
@@ -186,7 +201,7 @@
       blank.textContent = "— choose a field —";
       select.appendChild(blank);
       included.forEach(function (name) {
-        if (st.across[name]) { return; }
+        if (acrossPosition(st, name) !== -1) { return; }
         var opt = document.createElement("option");
         opt.value = name;
         opt.textContent = name;
@@ -199,7 +214,7 @@
       });
       layoutBlock.appendChild(select);
 
-      if (!Object.keys(st.across).length || !st.value) {
+      if (!st.across.length || !st.value) {
         layoutBlock.appendChild(el("p", "help warn",
           "Not finished — pick at least one field for the top and one for the cells. Until then this sheet exports as a plain table."));
       }
@@ -228,8 +243,7 @@
             return { field: e && e.field !== undefined ? e.field : e, dir: (e && e.dir) || "asc" };
           })
         : (s.suggestSort || []).map(function (n) { return { field: n, dir: "asc" }; });
-      var across = {};
-      ((prior && prior.across) || []).forEach(function (n) { across[n] = true; });
+      var across = ((prior && prior.across) || []).slice();
       state[s.name] = {
         name: s.name,
         allowed: !!allowed[s.name],
@@ -238,7 +252,7 @@
         sort: sort,
         across: across,
         value: (prior && prior.value) || "",
-        pendingCrosstab: Object.keys(across).length > 0
+        pendingCrosstab: across.length > 0
       };
       order.push(s.name);
     });
@@ -280,10 +294,10 @@
       var st = state[name];
       if (!st.allowed) { return; }
       allowedSheets.push(name);
-      // Keep the author's column order for the across-the-top stack, so the
-      // header rows read the way the shelf does. Sort keys keep TICK order,
-      // which is the priority the author chose.
-      var across = st.columns.filter(function (c) { return st.across[c] && !st.exclude[c]; });
+      // TICK order, not column order — the stack decides how the crosstab
+      // groups, so the author's sequence is the whole answer here. (This read
+      // st.columns before, which silently overrode the pick.)
+      var across = st.across.filter(function (c) { return !st.exclude[c]; });
       sheetConfig[name] = {
         exclude: Object.keys(st.exclude),
         sort: st.sort.slice(),
