@@ -94,3 +94,7 @@ body {
 .cfg .col-row { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 2px 0; }
 .cfg select { width: 100%; padding: 5px 8px; font: inherit; border: 1px solid var(--cusd-line); border-radius: 4px; }
 .cfg p.warn { color: #8a5300; }
+/* Sort-priority number in front of a chosen sort key; fixed width so the field
+   names stay aligned whether or not a row is numbered. */
+.cfg .sort-rank { display: inline-block; min-width: 16px; font-weight: 600; color: var(--cusd-navy); }
+.cfg .col-row select { width: auto; margin-left: auto; font-size: 12px; padding: 2px 4px; }

@@ -27,6 +27,9 @@ with a single button whose target sheets are fixed by the dashboard author.
   shows — everything on the Tooltip shelf, plus the sort helpers that drive row
   order. Those are ticked off in Configure, and tooltip-only fields and anything
   named `… Sort` start unticked.
+- **Rows in the order the sheet is sorted.** A field can be a *sort key* without
+  being in the file, so the hidden `Location Sort` / `Grade Sort` columns behind a
+  CUSD viz order the spreadsheet and never appear in it.
 - **Readable headers.** The pill caption's aggregation wrapper is stripped, so
   `AVG(Pct At Above)` becomes `Pct At Above` and `ATTR(Common Name)` becomes
   `Common Name`. Date parts (`YEAR(...)`) are left alone — there the wrapper is
@@ -102,25 +105,60 @@ allow-list is only required for Tableau Cloud / published workbooks.
 In the **Configure…** dialog the author sets:
 
 - **Allowed sheets** — only these can be exported.
-- **Columns to include** (per sheet) — everything the viz carries is listed;
-  untick what shouldn't reach the spreadsheet. Tooltip-only fields and sort
-  helpers start unticked.
-- **Layout** (per sheet) — *flat table* (one row per mark) or *match the
-  worksheet*: pick the field(s) that run across the top and the field that fills
-  the cells, and the export comes out as that crosstab, repeated header rows
-  merged the way the viz reads.
+Then, **per sheet**, three numbered steps:
+
+1. **What goes in the file** — every field the viz carries is listed; untick what
+   shouldn't reach the spreadsheet. Tooltip-only fields and sort helpers start
+   unticked for you.
+2. **What order the rows come out in** — tick the field(s) the sheet is sorted
+   by, in priority order, each ascending or descending. **A sort key does not
+   have to be in the file** — that is the point of it.
+3. **How the file is laid out** — a plain table (one row per mark), or a crosstab
+   like the worksheet: name the field(s) that run across the top and the field
+   that fills the cells.
 - **File-name prefix** — the file downloads as `PREFIX_YYYYMMDD.xlsx`.
 - **"About" tab** — toggle on/off, plus an editable confidentiality note.
   (The standard FERPA / data-handling notice is always included on the tab.)
 - **Button tooltip** — hover text (the button itself is the icon).
 
-### Why the layout is declared rather than detected
+### Worked example — a school × grade × year crosstab
 
-The Extensions API exposes the **marks card** (Color, Text, Detail, Tooltip …)
-through `getVisualSpecificationAsync`, which is how tooltip-only fields are
-spotted. It does **not** expose which fields sit on the **Rows** shelf versus the
-**Columns** shelf, and summary data always arrives long/tall. So a crosstab has
-to be described once by the author; there is nothing to infer it from.
+For a sheet with `School` and `Grade` on Rows, `Benchmark Period` and
+`School Year` on Columns, `Pct At Above` on Text, and a stack of tooltip fields:
+
+| Step | What to pick |
+|---|---|
+| 1. What goes in the file | `School`, `Grade`, `Benchmark Period`, `School Year`, `Pct At Above`. Leave the tooltip fields and `Location Sort` / `Grade Sort` unticked. |
+| 2. What order | `Location Sort`, then `Grade Sort` — both unticked in step 1, both still obeyed. |
+| 3. Layout | *Like the worksheet*; across the top `Benchmark Period` then `School Year`; cells `Pct At Above`. |
+
+Result: `DISTRICT` first then schools in the viz's own order, `ALL GRADES` above
+`KG` above `GRADE 1`, one merged `BOY` heading spanning its years, and
+percentages Excel can average.
+
+### Why layout and sort are declared rather than detected
+
+Two different holes in the API, with the same consequence:
+
+- **Layout.** `getVisualSpecificationAsync` exposes the **marks card** (Color,
+  Text, Detail, Tooltip …), which is how tooltip-only fields are spotted. It does
+  **not** expose which fields sit on the **Rows** shelf versus the **Columns**
+  shelf, and summary data always arrives long/tall.
+- **Sort.** There is no sort accessor on `Worksheet` at all — the API has a
+  `SortDirection` enum and nothing that reads or reports a sheet's sort. So the
+  export cannot copy the viz's row order.
+
+What it *can* do is obey the same field the viz obeys. A CUSD viz table ships
+explicit sort columns (`locationSort`, `gradeSort`, `benchmarkPeriodSort`), and a
+sheet sorted by one has that field in its data — so naming it as a sort key
+reproduces the order exactly. **"Don't export this column" and "don't use this
+column" are separate instructions**, which is why the column picker and the sort
+picker are separate lists over the same fields.
+
+In a crosstab, a sort key orders whichever axis it is *constant* along: a grade
+sort varies down the rows and reads the same across, so it orders rows; a period
+sort that varies across the top orders columns. A key constant along neither
+disagrees with itself inside one cell and is ignored rather than guessed at.
 
 ## Upgrading an existing dashboard
 
@@ -130,7 +168,7 @@ this extension the next time it loads. That upgrade is deliberately split:
 | Behaviour | Applies |
 |---|---|
 | Header cleanup, empty cells for nulls, numeric/percent formatting | Immediately, everywhere — no re-configure |
-| Column exclusions, crosstab layout | Only after an author opens **Configure…** on that workbook and saves |
+| Column exclusions, row order, crosstab layout | Only after an author opens **Configure…** on that workbook and saves |
 
 A workbook that is never re-configured keeps exporting every column as a flat
 table, exactly as before.
@@ -156,8 +194,12 @@ add a license file if you intend to redistribute it.
 - One tab per allowed sheet.
 - The crosstab supports **one** value field per sheet; a viz showing two measures
   side by side still needs the flat layout.
-- Crosstab row and column order follow the order the summary data arrives in,
-  which is the viz's own order — there is no separate sort control.
+- With no sort key picked, rows come out in whatever order the summary data
+  arrives in. That is usually the viz's order, but it is not guaranteed — pick a
+  sort key if the order matters.
+- Duplicate header names (a field on Rows *and* the same field as `ATTR()` on
+  Tooltip both clean to `Grade`) are numbered — `Grade`, `Grade (2)`. Usually the
+  duplicate is the tooltip copy and is excluded anyway.
 - File name is `prefix + date`; pulling a field value into the name is a possible enhancement.
 - To change the icon, edit `icon.svg` then run `python3 make_icon.py`
   (needs `pip install cairosvg Pillow`).

@@ -2,18 +2,23 @@
  * CUSD Excel Export — Configure dialog (author-only)
  * --------------------------------------------------
  * Runs inside the pop-up opened from the extension's "Configure…" menu item.
- * It receives the dashboard's worksheets (name, columns, suggested exclusions)
- * plus the current settings as a payload, lets the author pick the allow-list,
- * the columns each sheet exports and the layout, and returns the chosen config
- * to the parent (excel-export.js) which performs the actual save.
+ * It receives the dashboard's worksheets (name, columns, suggested exclusions,
+ * suggested sort keys) plus the current settings as a payload, lets the author
+ * pick the allow-list, the columns each sheet exports, the row order and the
+ * layout, and returns the chosen config to the parent (excel-export.js) which
+ * performs the actual save.
  *
  * This page is pure UI — it never reads or writes settings itself, so there is
  * one and only one place that persists config (the parent).
  *
- * Why the layout has to be declared here rather than detected: the Extensions
- * API exposes the marks card (Color / Text / Tooltip …) but NOT which fields sit
- * on the Rows shelf versus the Columns shelf. So an author who wants the file to
- * look like the crosstab on screen names the across-the-top field(s) once.
+ * Two things the Extensions API cannot tell us, which is why they are asked here
+ * rather than detected:
+ *   - Which fields sit on the Rows shelf vs the Columns shelf. The API exposes
+ *     the marks card (Color / Text / Tooltip …) and nothing about the shelves,
+ *     so a crosstab layout has to be named.
+ *   - How the worksheet is sorted. There is no sort accessor on Worksheet at
+ *     all. But a CUSD viz table carries its own sort columns, so the export can
+ *     obey the same field the viz obeys — named here, and left out of the file.
  */
 (function () {
   "use strict";
@@ -26,7 +31,8 @@
   var footerTextEl = document.getElementById("footerText");
   var buttonLabelEl = document.getElementById("buttonLabel");
 
-  // sheetName -> { allowed, columns, exclude:{name:true}, across:{name:true}, value }
+  // sheetName -> { allowed, columns, exclude:{name:true}, sort:[{field,dir}],
+  //               across:{name:true}, value, pendingCrosstab }
   var state = {};
   var order = [];
 
@@ -41,6 +47,24 @@
     return st.columns.filter(function (c) { return !st.exclude[c]; });
   }
 
+  function sortPosition(st, name) {
+    for (var i = 0; i < st.sort.length; i++) {
+      if (st.sort[i].field === name) { return i; }
+    }
+    return -1;
+  }
+
+  function checkboxRow(labelText, checked, onChange) {
+    var row = el("label", "col-row");
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = checked;
+    cb.addEventListener("change", function () { onChange(cb.checked); });
+    row.appendChild(cb);
+    row.appendChild(el("span", null, labelText));
+    return row;
+  }
+
   // --- one sheet's panel ----------------------------------------------------
   function renderPanel(st, panel) {
     panel.innerHTML = "";
@@ -48,45 +72,81 @@
 
     if (!st.columns.length) {
       panel.appendChild(el("p", "help",
-        "Column details are not available from this Tableau version — every column on the sheet will be exported."));
+        "This Tableau version won't tell the extension what's on the sheet, so every column will be exported, in the order the data arrives. Everything below needs Tableau 2022.2 or newer."));
       return;
     }
 
-    // Columns to include.
+    // ---- 1. columns ----
     var colsBlock = el("div", "sub-block");
-    colsBlock.appendChild(el("div", "sub-title", "Columns to include"));
+    colsBlock.appendChild(el("div", "sub-title", "1. What goes in the file"));
     colsBlock.appendChild(el("p", "help",
-      "Unticked columns are left out of the download. Tooltip-only fields and sort helpers start unticked."));
+      "A worksheet carries more fields than it shows — everything on the Tooltip shelf, plus the sort helpers behind the scenes. Tick only what belongs in the spreadsheet; those start unticked for you."));
 
     var colList = el("div", "col-list");
     st.columns.forEach(function (name) {
-      var row = el("label", "col-row");
-      var cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = !st.exclude[name];
-      cb.addEventListener("change", function () {
-        if (cb.checked) { delete st.exclude[name]; }
+      var pos = sortPosition(st, name);
+      var suffix = pos === -1 ? "" : "   (sort key " + (pos + 1) + ")";
+      colList.appendChild(checkboxRow(name + suffix, !st.exclude[name], function (on) {
+        if (on) { delete st.exclude[name]; }
         else {
           st.exclude[name] = true;
           delete st.across[name];
           if (st.value === name) { st.value = ""; }
         }
         renderPanel(st, panel);
-      });
-      row.appendChild(cb);
-      row.appendChild(el("span", null, name));
-      colList.appendChild(row);
+      }));
     });
     colsBlock.appendChild(colList);
     panel.appendChild(colsBlock);
 
-    // Layout.
+    // ---- 2. order ----
+    var sortBlock = el("div", "sub-block");
+    sortBlock.appendChild(el("div", "sub-title", "2. What order the rows come out in"));
+    sortBlock.appendChild(el("p", "help",
+      "Tableau won't tell an extension how a sheet is sorted, so pick the field the sheet sorts by — usually a hidden sort column like Location Sort or Grade Sort. A sort key does NOT have to be in the file: leave it unticked above and it still orders the rows. Tick them in priority order (first ticked breaks ties first). With none picked, rows come out in whatever order the data arrives."));
+
+    var sortList = el("div", "col-list");
+    st.columns.forEach(function (name) {
+      var pos = sortPosition(st, name);
+      var row = el("label", "col-row");
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = pos !== -1;
+      cb.addEventListener("change", function () {
+        if (cb.checked) { st.sort.push({ field: name, dir: "asc" }); }
+        else { st.sort.splice(sortPosition(st, name), 1); }
+        renderPanel(st, panel);
+      });
+      row.appendChild(cb);
+      row.appendChild(el("span", "sort-rank", pos === -1 ? "" : String(pos + 1) + "."));
+      row.appendChild(el("span", null, name));
+
+      if (pos !== -1) {
+        var dir = document.createElement("select");
+        [["asc", "A → Z / low → high"], ["desc", "Z → A / high → low"]].forEach(function (o) {
+          var opt = document.createElement("option");
+          opt.value = o[0];
+          opt.textContent = o[1];
+          opt.selected = st.sort[pos].dir === o[0];
+          dir.appendChild(opt);
+        });
+        dir.addEventListener("change", function () {
+          st.sort[sortPosition(st, name)].dir = dir.value;
+        });
+        row.appendChild(dir);
+      }
+      sortList.appendChild(row);
+    });
+    sortBlock.appendChild(sortList);
+    panel.appendChild(sortBlock);
+
+    // ---- 3. layout ----
     var layoutBlock = el("div", "sub-block");
-    layoutBlock.appendChild(el("div", "sub-title", "Layout"));
+    layoutBlock.appendChild(el("div", "sub-title", "3. How the file is laid out"));
 
     [
-      { key: "flat", label: "Flat table — one row per mark, one column per field" },
-      { key: "cross", label: "Match the worksheet — crosstab, values across the top" }
+      { key: "flat", label: "One row per mark — a plain table, one column per field" },
+      { key: "cross", label: "Like the worksheet — a crosstab, with headers across the top" }
     ].forEach(function (opt) {
       var row = el("label", "col-row");
       var radio = document.createElement("input");
@@ -106,25 +166,20 @@
     if (st.pendingCrosstab) {
       var included = includedColumns(st);
 
-      layoutBlock.appendChild(el("div", "sub-title", "Across the top"));
+      layoutBlock.appendChild(el("div", "sub-title", "Fields across the top"));
       layoutBlock.appendChild(el("p", "help",
-        "One header row per field, in this order. Everything else you kept becomes a row header."));
+        "The same fields that sit on the Columns shelf of the worksheet — one header row each, top to bottom in the order you tick them. Repeated headings merge, so a period spanning three years reads as one heading. Everything else you kept becomes a row heading on the left."));
       included.forEach(function (name) {
         if (name === st.value) { return; }
-        var row = el("label", "col-row");
-        var cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.checked = !!st.across[name];
-        cb.addEventListener("change", function () {
-          if (cb.checked) { st.across[name] = true; } else { delete st.across[name]; }
+        layoutBlock.appendChild(checkboxRow(name, !!st.across[name], function (on) {
+          if (on) { st.across[name] = true; } else { delete st.across[name]; }
           renderPanel(st, panel);
-        });
-        row.appendChild(cb);
-        row.appendChild(el("span", null, name));
-        layoutBlock.appendChild(row);
+        }));
       });
 
-      layoutBlock.appendChild(el("div", "sub-title", "Values in the cells"));
+      layoutBlock.appendChild(el("div", "sub-title", "Field that fills the cells"));
+      layoutBlock.appendChild(el("p", "help",
+        "The number in the body of the crosstab — whatever is on Text in the worksheet. One field; a sheet showing two measures side by side needs the plain-table layout instead."));
       var select = document.createElement("select");
       var blank = document.createElement("option");
       blank.value = "";
@@ -146,7 +201,7 @@
 
       if (!Object.keys(st.across).length || !st.value) {
         layoutBlock.appendChild(el("p", "help warn",
-          "Pick at least one across-the-top field and a value field — until then this sheet exports as a flat table."));
+          "Not finished — pick at least one field for the top and one for the cells. Until then this sheet exports as a plain table."));
       }
     }
 
@@ -168,6 +223,11 @@
       // before per-column choices existed): start from the suggestions.
       (prior && Array.isArray(prior.exclude) ? prior.exclude : (s.suggestExclude || []))
         .forEach(function (n) { exclude[n] = true; });
+      var sort = (prior && Array.isArray(prior.sort))
+        ? prior.sort.map(function (e) {
+            return { field: e && e.field !== undefined ? e.field : e, dir: (e && e.dir) || "asc" };
+          })
+        : (s.suggestSort || []).map(function (n) { return { field: n, dir: "asc" }; });
       var across = {};
       ((prior && prior.across) || []).forEach(function (n) { across[n] = true; });
       state[s.name] = {
@@ -175,6 +235,7 @@
         allowed: !!allowed[s.name],
         columns: s.columns || [],
         exclude: exclude,
+        sort: sort,
         across: across,
         value: (prior && prior.value) || "",
         pendingCrosstab: Object.keys(across).length > 0
@@ -220,10 +281,12 @@
       if (!st.allowed) { return; }
       allowedSheets.push(name);
       // Keep the author's column order for the across-the-top stack, so the
-      // header rows read the way the shelf does.
+      // header rows read the way the shelf does. Sort keys keep TICK order,
+      // which is the priority the author chose.
       var across = st.columns.filter(function (c) { return st.across[c] && !st.exclude[c]; });
       sheetConfig[name] = {
         exclude: Object.keys(st.exclude),
+        sort: st.sort.slice(),
         across: (st.value && across.length) ? across : [],
         value: (st.value && across.length) ? st.value : ""
       };

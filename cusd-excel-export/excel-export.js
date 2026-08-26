@@ -30,7 +30,7 @@
   // Settings keys (stored per-extension-instance via tableau.extensions.settings).
   var KEYS = {
     allowedSheets: "allowedSheets",   // JSON array of worksheet names
-    sheetConfig: "sheetConfig",       // JSON { sheetName: {exclude, across, value} }
+    sheetConfig: "sheetConfig",       // JSON { sheetName: {exclude, sort, across, value} }
     filenamePrefix: "filenamePrefix", // string
     includeFooter: "includeFooter",   // "true" / "false"
     footerText: "footerText",         // string
@@ -91,6 +91,7 @@
     var cfg = all[sheetName] || {};
     return {
       exclude: Array.isArray(cfg.exclude) ? cfg.exclude : [],
+      sort: Array.isArray(cfg.sort) ? cfg.sort : [],
       across: Array.isArray(cfg.across) ? cfg.across : [],
       value: typeof cfg.value === "string" ? cfg.value : ""
     };
@@ -145,14 +146,15 @@
     return s || String(name);
   }
 
-  // Two different pills can clean to the same word (a dimension on Rows and the
-  // same field as ATTR() on Tooltip). Keep the first; fall back to the raw pill
-  // caption for the collision rather than shipping two identical headers.
+  // Two different pills can clean to the same word — Grade on Rows and the same
+  // field as ATTR(Grade) on Tooltip both become "Grade". Number the duplicate
+  // rather than falling back to the raw caption: the wrapper is the thing being
+  // removed, so putting it back on the collision defeats the point. In practice
+  // the duplicate is the tooltip copy and is usually excluded anyway.
   function uniqueHeaders(rawNames) {
     var used = {}, out = [];
     rawNames.forEach(function (raw) {
       var name = prettyHeader(raw);
-      if (used[name.toLowerCase()]) { name = String(raw); }
       var candidate = name, i = 2;
       while (used[candidate.toLowerCase()]) { candidate = name + " (" + i + ")"; i++; }
       used[candidate.toLowerCase()] = true;
@@ -293,6 +295,56 @@
     }
   }
 
+  // --- sort order -----------------------------------------------------------
+  // The Extensions API exposes no way to read a worksheet's sort — there is no
+  // sort accessor on Worksheet at all — so the export cannot copy the viz's row
+  // order directly. What it CAN do is order by the same thing the viz orders by:
+  // CUSD viz tables carry explicit sort columns (locationSort, gradeSort,
+  // benchmarkPeriodSort), and a sheet sorted by one has that field in its data.
+  //
+  // So a field can be a sort key and still be left out of the file. "Don't export
+  // this column" and "don't use this column" are different instructions, and the
+  // sort keys are exactly the fields you want obeyed but never printed.
+  function sortKeyIndices(headers, sortSpec) {
+    var byName = {};
+    headers.forEach(function (h, i) { byName[h.toLowerCase()] = i; });
+    var keys = [];
+    (sortSpec || []).forEach(function (entry) {
+      var name = entry && (entry.field !== undefined ? entry.field : entry);
+      var i = byName[String(name || "").toLowerCase()];
+      if (i === undefined) { return; }  // field renamed away — skip, don't break
+      keys.push({ idx: i, desc: !!(entry && entry.dir === "desc") });
+    });
+    return keys;
+  }
+
+  // Numbers numerically, text naturally ("GRADE 2" before "GRADE 10"), blanks last
+  // in both directions — an empty cell is missing data, not a smallest value.
+  function compareCells(a, b) {
+    var av = a && a.v, bv = b && b.v;
+    var aEmpty = (av === "" || av === null || av === undefined);
+    var bEmpty = (bv === "" || bv === null || bv === undefined);
+    if (aEmpty || bEmpty) { return aEmpty && bEmpty ? 0 : (aEmpty ? 1 : -1); }
+    if (typeof av === "number" && typeof bv === "number") { return av - bv; }
+    return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  // Stable: ties keep the order the data arrived in, which is the viz's own.
+  function sortByKeys(items, keys, cellsOf) {
+    if (!keys.length) { return items; }
+    return items
+      .map(function (item, i) { return { item: item, i: i }; })
+      .sort(function (a, b) {
+        var ca = cellsOf(a.item), cb = cellsOf(b.item);
+        for (var k = 0; k < keys.length; k++) {
+          var c = compareCells(ca[keys[k].idx], cb[keys[k].idx]);
+          if (c) { return keys[k].desc ? -c : c; }
+        }
+        return a.i - b.i;
+      })
+      .map(function (x) { return x.item; });
+  }
+
   // --- layout ---------------------------------------------------------------
   // A grid is { aoa, fmt, merges }: values, a parallel matrix of Excel number
   // formats, and any header merges. Kept parallel rather than handing SheetJS
@@ -315,10 +367,10 @@
     return keep.length ? keep : headers.map(function (_, i) { return i; });
   }
 
-  function flatGrid(headers, rows, keep) {
+  function flatGrid(headers, rows, keep, sortKeys) {
     var grid = newGrid();
     pushRow(grid, keep.map(function (i) { return { v: headers[i] }; }));
-    rows.forEach(function (row) {
+    sortByKeys(rows, sortKeys || [], function (row) { return row; }).forEach(function (row) {
       pushRow(grid, keep.map(function (i) { return row[i] || EMPTY; }));
     });
     return grid;
@@ -332,7 +384,7 @@
   // visual specification covers the marks card only — so this layout is declared
   // in Configure rather than inferred. Column and row order follow first
   // appearance in the summary data, which is the order the viz hands back.
-  function crosstabGrid(headers, rows, keep, acrossNames, valueName) {
+  function crosstabGrid(headers, rows, keep, acrossNames, valueName, sortKeys) {
     var byName = {};
     keep.forEach(function (i) { byName[headers[i].toLowerCase()] = i; });
 
@@ -345,7 +397,7 @@
 
     // Not enough of the declared layout survives (fields renamed or removed) —
     // fall back to the flat table rather than emit a broken crosstab.
-    if (!acrossIdx.length || valueIdx === undefined) { return flatGrid(headers, rows, keep); }
+    if (!acrossIdx.length || valueIdx === undefined) { return flatGrid(headers, rows, keep, sortKeys); }
 
     var downIdx = keep.filter(function (i) {
       return acrossIdx.indexOf(i) === -1 && i !== valueIdx;
@@ -361,9 +413,29 @@
       return idxs.map(function (i) { return text(row[i]); }).join(SEP);
     }
 
-    var colKeys = [], colSeen = {}, colParts = {};
-    var rowKeys = [], rowSeen = {}, rowCells = {};
+    var colKeys = [], colSeen = {}, colParts = {}, colSortCells = {};
+    var rowKeys = [], rowSeen = {}, rowCells = {}, rowSortCells = {};
     var body = {};
+
+    // A sort key orders whichever axis it is CONSTANT along: a gradeSort varies
+    // down the rows and reads the same all the way across, so it orders the
+    // rows; a benchmarkPeriodSort that varies across the top orders the columns.
+    // A key constant along neither axis disagrees with itself inside a single
+    // crosstab cell and cannot order anything, so it is dropped, not guessed at.
+    var keys = sortKeys || [];
+    var rowConstant = keys.map(function () { return true; });
+    var colConstant = keys.map(function () { return true; });
+
+    function noteConstancy(store, groupKey, row, flags) {
+      var prior = store[groupKey];
+      if (!prior) {
+        store[groupKey] = keys.map(function (k) { return row[k.idx] || EMPTY; });
+        return;
+      }
+      keys.forEach(function (k, n) {
+        if (flags[n] && compareCells(prior[n], row[k.idx] || EMPTY) !== 0) { flags[n] = false; }
+      });
+    }
 
     rows.forEach(function (row) {
       var ck = joinKey(row, acrossIdx);
@@ -372,14 +444,28 @@
         colKeys.push(ck);
         colParts[ck] = acrossIdx.map(function (i) { return row[i] || EMPTY; });
       }
+      noteConstancy(colSortCells, ck, row, colConstant);
+
       var rk = joinKey(row, downIdx);
       if (!rowSeen[rk]) {
         rowSeen[rk] = true;
         rowKeys.push(rk);
         rowCells[rk] = downIdx.map(function (i) { return row[i] || EMPTY; });
       }
+      noteConstancy(rowSortCells, rk, row, rowConstant);
+
       body[rk + SEP + ck] = row[valueIdx] || EMPTY;
     });
+
+    // The per-group cells collected above are indexed by POSITION IN keys, not
+    // by header index, so the comparator gets keys re-pointed at those positions.
+    function axisKeys(flags) {
+      var out = [];
+      keys.forEach(function (k, n) { if (flags[n]) { out.push({ idx: n, desc: k.desc }); } });
+      return out;
+    }
+    rowKeys = sortByKeys(rowKeys, axisKeys(rowConstant), function (rk) { return rowSortCells[rk]; });
+    colKeys = sortByKeys(colKeys, axisKeys(colConstant), function (ck) { return colSortCells[ck]; });
 
     var grid = newGrid();
 
@@ -482,9 +568,12 @@
         var data = await readSheet(ws);
         var cfg = getSheetConfig(name);
         var keep = keepIndices(data.headers, cfg.exclude);
+        // Sort keys resolve against ALL headers, not just the kept ones — a sort
+        // column is normally left out of the file and still obeyed.
+        var sortKeys = sortKeyIndices(data.headers, cfg.sort);
         var grid = cfg.across.length
-          ? crosstabGrid(data.headers, data.rows, keep, cfg.across, cfg.value)
-          : flatGrid(data.headers, data.rows, keep);
+          ? crosstabGrid(data.headers, data.rows, keep, cfg.across, cfg.value, sortKeys)
+          : flatGrid(data.headers, data.rows, keep, sortKeys);
         XLSX.utils.book_append_sheet(wb, sheetFromGrid(grid), safeSheetName(name, usedNames));
         exported++;
       }
@@ -578,7 +667,9 @@
       columns: headers,
       suggestExclude: headers.filter(function (h) {
         return looksLikeSortField(h) || tooltipOnly[h.toLowerCase()];
-      })
+      }),
+      // Same fields, opposite purpose: kept out of the file, used to order it.
+      suggestSort: headers.filter(looksLikeSortField)
     };
   }
 
