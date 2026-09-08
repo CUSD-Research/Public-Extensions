@@ -40,6 +40,13 @@ table.kpi{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5
 .kpi.compact tbody td{padding:6px 10px}
 .kpi.compact thead th{padding:7px 10px}
 
+/* click-to-filter (optional, config.clickToFilter) */
+.kpi tbody tr.clickable{cursor:pointer}
+.kpi tbody tr.clickable:hover td{background:#f1edf7}
+.kpi tbody tr.clickable:hover .col-head{background:#f1edf7}
+.kpi tbody tr.selected td{background:#eaf2fb}
+.kpi tbody tr.selected .col-head{background:#eaf2fb; box-shadow:inset 3px 0 0 var(--purple), 1px 0 0 var(--line)}
+
 .twoline .a{font-weight:600; font-variant-numeric:tabular-nums}
 .twoline .b{color:var(--muted); font-size:11px}
 .txt{font-weight:600}

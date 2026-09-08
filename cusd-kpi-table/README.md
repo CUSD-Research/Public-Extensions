@@ -23,6 +23,12 @@ Analytics**.
 - Reads the **summary (aggregated) data shown on screen** — never row-level
   underlying data. **Row-level security is respected** automatically.
 - **Follows the dashboard:** re-renders when filters or parameters change.
+- **Optional click-to-filter:** a row click filters the rest of the dashboard
+  by that row's identity field ("Each row is"); click the same row again to
+  clear. Off by default — toggle it in Configure.
+- **Hover tooltips** on every cell show the column header, formatted value,
+  and (when configured) the comparison/target basis — no new data reads, just
+  the fields already mapped for that column.
 - Optional **Download to Excel** button (the table's underlying data + a FERPA
   "About" tab).
 - **In-product guidance:** an unconfigured table shows the setup steps right on
@@ -51,6 +57,11 @@ sample rows.
 - **Each row is** — the dimension that defines a table row (e.g. *Student*).
 - **Row sub-line** *(optional)* — a second line under the row label.
 - **Density** — comfortable / compact.
+- **Click a row to filter the rest of the dashboard** *(optional)* — when on,
+  clicking a row applies "Each row is" as a categorical filter to every other
+  worksheet on the dashboard that carries that field (click the row again to
+  clear). The source worksheet itself is always excluded, so the KPI table
+  keeps showing every row as a control panel.
 - **Time dimension** *(optional)* — if the sheet has rows per period (e.g. one
   per School Year, on Detail), set it here. Scalar cells then show the **focal
   year**; sparklines trend across years. Toggle a viewer **year selector**, and
@@ -86,7 +97,8 @@ reusable. Coloring/direction is driven by one of:
 
 A **"higher is better"** toggle flips the good/bad sense (so *absences* color
 correctly — lower is good). Arrows show raw direction (above/below); thumbs and
-comparison-coloring honor higher/lower-is-better.
+comparison-coloring honor higher/lower-is-better. A cell's hover tooltip repeats
+its header + value and, when the column has one, its comparison/target basis.
 
 ## Data model
 
@@ -96,8 +108,8 @@ comparison-coloring honor higher/lower-is-better.
   Format numbers in Tableau; the extension shows your formatted values. Dashboard
   filters flow through automatically.
 - **Time / trends (optional).** For a focal-year filter and/or sparklines, also
-  put your **time field** (e.g. School Year) on **Detail** so the sheet is one row
-  per entity per year. **Leave the year unfiltered** on that sheet — the
+  put your **time field** (e.g. School Year) on **Detail** so the sheet is one
+  row per entity per year. **Leave the year unfiltered** on that sheet — the
   extension's own year selector picks the focal year. Scalar cells show the focal
   year; sparklines trend across years (clip at the focal year, or show all years
   and highlight it — your choice in Configure).
@@ -114,7 +126,7 @@ comparison-coloring honor higher/lower-is-better.
 | `cusd-kpi-table.trex` | Manifest you add to a dashboard. `<url>` → hosted `index.html`. |
 | `index.html` | In-dashboard view (toolbar + table container). |
 | `renderers.js` | **Shared pure engine** — `(config, rows) → HTML`. Used by the view *and* the dialog preview, so they always match. |
-| `kpi-table.js` | Tableau glue: read summary data, render, follow filters/params, export. |
+| `kpi-table.js` | Tableau glue: read summary data, render, follow filters/params, click-to-filter, export. |
 | `configure.html` / `configure.js` | The author-only **Configure…** dialog (progressive disclosure + live preview). |
 | `styles.css` | Styling for the view and the dialog. |
 | `icon.svg` / `icon.png` / `make_icon.py` | Icon source + rendered PNG + generator. |
@@ -156,6 +168,9 @@ the emailed fallback.
 - **Summary data only** — no underlying-row reads. Aggregate-fine /
   per-student-rosters-never still applies to what you put on the source sheet.
 - **RLS-respecting** — a viewer only sees (and exports) rows they're authorized to.
+- **Click-to-filter reads nothing new** — it applies a value the viewer already
+  sees on their own screen as a standard Tableau worksheet filter; it never
+  bypasses RLS on the worksheets it filters.
 - **No data leaves the browser** — the host serves static code; the export is
   built client-side.
 - **No secrets / no PII in this repo** — application code only; libraries are
@@ -166,7 +181,9 @@ the emailed fallback.
 - Server-side subscriptions don't render extensions (above).
 - Large tables: fine for hundreds of rows; very large sets would want
   virtualization.
-- Click-to-filter / tooltips are not wired yet (possible enhancement via the
-  Extensions API).
+- Click-to-filter is single-select and dashboard-wide (every other worksheet
+  that has the field) — there's no per-worksheet include/exclude picker yet
+  (matches Tableau's own "Use as Filter" simplicity, not custom-action
+  granularity). Revisit if a workbook needs finer control.
 - To change the icon: edit `icon.svg`, then `python3 make_icon.py`
   (`pip install cairosvg Pillow`).
