@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CUSD Feeder Flow — look &amp; feel mockup (synthetic data)</title>
+<!--
+  CUSD Feeder Flow — LOOK & FEEL MOCKUP (synthetic data, not wired to Tableau)
+  ----------------------------------------------------------------------------
+  Double-click to open. Renders the SAME flow-model.js the extension ships,
+  fed with made-up rows shaped like one elementary's grade-5 cohort. No network.
+
+  Panel 1  the design at a dashboard-band size
+  Panel 2  a small extension zone, to show the labels dodging and Other forming
+  Panel 3  the same data with the stayers left IN the flow, which is the
+           standard Sankey and the thing this design exists to avoid
+  Panel 4  a different question altogether -- where a graduating class went --
+           to show that categories, colours and words are data-driven, not
+           tied to the feeder dashboard
+-->
+<style>
+  body{font-family:"Segoe UI",Tableau,Arial,sans-serif;color:#1f2a37;margin:0;padding:18px 20px 40px;background:#f6f7f9}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{color:#6b7280;font-size:13px;margin:0 0 16px}
+  h2{font-size:13px;margin:22px 0 6px;color:#374151}
+  .panel{background:#fff;border:1px solid #e5e7eb;border-radius:6px;display:inline-block;line-height:0}
+  .banner{border:1px solid #f0c98a;background:#fff7ea;color:#7a5a16;border-radius:6px;padding:8px 12px;font-size:12.5px;margin:0 0 14px;display:inline-block}
+</style>
+</head>
+<body>
+<h1>CUSD Feeder Flow — mockup</h1>
+<p class="sub">Synthetic data. One school, one grade, one origin year: 312 students, 256 stayed.</p>
+<div class="banner">Not wired to Tableau. Every number here is invented; the layout code is the real one.</div>
+
+<h2>1 · Dashboard band, 1250 × 520</h2>
+<div class="panel" id="p1"></div>
+
+<h2>2 · Small extension zone, 720 × 360 — labels dodge, tail collapses into Other</h2>
+<div class="panel" id="p2"></div>
+
+<h2>3 · Same data with the stayers kept in the flow (what a standard Sankey shows)</h2>
+<div class="panel" id="p3"></div>
+
+<h2>4 · A different question: where a graduating class went, 1000 × 420 — no preset categories, no stayers, "graduates" as the unit</h2>
+<div class="panel" id="p4"></div>
+
+<script src="./flow-model.js"></script>
+<script>
+  var ORIGIN = "Knox Gifted Academy";
+  var rows = [
+    { origin: ORIGIN, category: "Stayed at Same School",        destination: ORIGIN,                          count: 256 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "Willis Junior High",            count: 24 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "ACP Middle",                    count: 11 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "Santan Junior High",            count: 4 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "Bogle Junior High",             count: 3 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "CTA - Freedom",                 count: 2 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "Hartford Elementary",           count: 1 },
+    { origin: ORIGIN, category: "Moved to Another CUSD School", destination: "Frye Elementary",               count: 1 },
+    { origin: ORIGIN, category: "Left CUSD",                    destination: "Charter School",                count: 4 },
+    { origin: ORIGIN, category: "Left CUSD",                    destination: "Other AZ Public District",      count: 3 },
+    { origin: ORIGIN, category: "Left CUSD",                    destination: "Out of State",                  count: 2 },
+    { origin: ORIGIN, category: "Left CUSD",                    destination: "Status Unknown or Undocumented", count: 1 }
+  ];
+  function put(id, w, h, opts) {
+    var r = FeederFlow.render(rows, w, h, opts || {});
+    var el = document.getElementById(id);
+    el.style.width = w + "px"; el.style.height = h + "px";
+    el.innerHTML = r.svg;
+  }
+  put("p1", 1250, 520, { title: "Knox Gifted Academy · Grade 5 · 2025–26" });
+  put("p2", 720, 360, { title: "Knox Gifted Academy · Grade 5", maxDestinations: 5 });
+  put("p3", 1250, 520, { title: "Knox Gifted Academy · Grade 5 · 2025–26 — stayers included", includeStayed: true });
+
+  // Panel 4: a made-up post-graduation outcomes question. Nothing here matches the feeder preset,
+  // so the categories rank by size, take palette colours keyed to their names, and the words come
+  // from the options. The blank destination on the last row falls back to its category.
+  var GRAD = "Class of 2026";
+  var gradRows = [
+    { origin: GRAD, category: "Enrolled in college", destination: "Community college",   count: 410 },
+    { origin: GRAD, category: "Enrolled in college", destination: "In-state university",  count: 265 },
+    { origin: GRAD, category: "Enrolled in college", destination: "Out-of-state university", count: 88 },
+    { origin: GRAD, category: "Employed",            destination: "Full time",            count: 130 },
+    { origin: GRAD, category: "Employed",            destination: "Part time",            count: 54 },
+    { origin: GRAD, category: "Military",            destination: "Enlisted",             count: 21 },
+    { origin: GRAD, category: "Trade or apprenticeship", destination: "Apprenticeship",   count: 17 },
+    { origin: GRAD, category: "Unknown",             destination: "",                     count: 62 }
+  ];
+  var r4 = FeederFlow.render(gradRows, 1000, 420, { title: "Class of 2026 · first fall after graduation", unit: "graduates", originNoun: "cohorts" });
+  var el4 = document.getElementById("p4"); el4.style.width = "1000px"; el4.style.height = "420px"; el4.innerHTML = r4.svg;
+</script>
+</body>
+</html>

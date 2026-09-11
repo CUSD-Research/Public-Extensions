@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 47 79" width="47" height="79">
+  <!-- CUSD Feeder Flow icon: one origin bar on the left fanning into three destinations,
+       plus a one-word label, in the same 47x79 frame as the other dashboard toolbar icons. -->
+  <rect x="3" y="8" width="7" height="42" rx="1.5" fill="#5f6b7a"/>
+  <path d="M10 10 C 24 10, 24 12, 37 12 L 37 26 C 24 26, 24 30, 10 30 Z" fill="#e15759" fill-opacity="0.85"/>
+  <path d="M10 31 C 24 31, 24 32, 37 32 L 37 40 C 24 40, 24 42, 10 42 Z" fill="#f28e2b" fill-opacity="0.85"/>
+  <path d="M10 43 C 24 43, 24 46, 37 46 L 37 50 C 24 50, 24 49, 10 49 Z" fill="#4e79a7" fill-opacity="0.85"/>
+  <rect x="37" y="10" width="7" height="17" rx="1.5" fill="#e15759"/>
+  <rect x="37" y="31" width="7" height="10" rx="1.5" fill="#f28e2b"/>
+  <rect x="37" y="45" width="7" height="6" rx="1.5" fill="#4e79a7"/>
+  <text x="23.5" y="74" text-anchor="middle" font-family="Arial, 'Liberation Sans', sans-serif" font-size="13" font-weight="700" fill="#414141">Flow</text>
+</svg>

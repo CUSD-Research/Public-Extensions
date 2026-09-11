@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CUSD Feeder Flow</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <!-- The in-dashboard view: the flow fills the extension object; #status shows a
+       message instead when there is nothing to draw or something needs configuring. -->
+  <div class="wrap">
+    <div id="viz" class="viz" role="img" aria-label="Where this school's students went the next year"></div>
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  <!--
+    The Tableau Extensions API is referenced locally (vendored) so nothing is fetched from a CDN
+    at runtime and no district data leaves the browser. The drawing code has no other dependency.
+      ./lib/tableau.extensions.1.latest.min.js  (add at hosting time -- see README)
+  -->
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./flow-model.js"></script>
+  <script src="./feeder-flow.js"></script>
+</body>
+</html>
