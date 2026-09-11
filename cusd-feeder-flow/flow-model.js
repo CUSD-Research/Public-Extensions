@@ -99,6 +99,7 @@
   function fmtPct(p) {
     if (!isFinite(p)) { return "0%"; }
     var v = p * 100;
+    if (v > 0 && v < 0.05) { return "<0.1%"; }        // one student in a big cohort is not "0.0%"
     return (v >= 10 || v === 0 ? v.toFixed(0) : v.toFixed(1)) + "%";
   }
 
@@ -112,6 +113,13 @@
     return i < 0 ? order.length : i;
   }
   function shortOf(cat, opts) { return (opts.categoryShort && opts.categoryShort[cat]) || cat; }
+  // A fold node's label carries how many destinations it absorbed: "3 others" for the default
+  // label, "<label> (3)" for a configured one. Kent (2026-09-11): the numbers sit in parentheses
+  // after every name, so the default fold cannot also end in a parenthesis.
+  function foldName(n, opts) {
+    if (n.label !== opts.otherLabel || !(n.members > 1)) { return n.label; }
+    return opts.otherLabel === "Other" ? n.members + " others" : n.label + " (" + n.members + ")";
+  }
 
   function hashStr(str) { var h = 5381, i; for (i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) | 0; } return Math.abs(h); }
 
@@ -340,17 +348,31 @@
     // of the longest label, which then clipped the very label the gutter was sized for. The
     // right-hand measure includes the "(n)" a fold label carries, for the same reason.
     function longest(arr, f) { var mx = 0; for (var q = 0; q < arr.length; q++) { var L = f(arr[q]).length; if (L > mx) { mx = L; } } return mx; }
-    function rightName(n) { return n.label + (n.label === opts.otherLabel && n.members > 1 ? " (" + n.members + ")" : ""); }
+    function rightName(n) { return foldName(n, opts); }
+    // The left gutter holds two lines per origin: the name (bold, wider glyphs) and the numbers
+    // line ("675 · 29% did not stay"). The numbers line is the longer one whenever the school
+    // name is short -- PERRY HIGH rendered as "5 · 29% did not stay" on the live dashboard
+    // (2026-09-11) because only the name was measured. Measure both, in the layout the column
+    // will actually use (two lines, or one when the origins do not fit at two).
+    var hasStayed = model.stayed > 0 && !opts.includeStayed;
+    function originNums(n) { return "(" + fmtInt(n.size) + " · " + fmtPct(n.pct) + (hasStayed ? " did not stay" : "") + ")"; }
+    var twoLine0 = cols[0].length * opts.twoLineHeight <= flowH;
     if (options == null || options.leftGutter === undefined) {
-      var lw = longest(cols[0], function (n) { return n.label; }) * opts.charWidth * 1.18 + 26;
-      opts.leftGutter = Math.max(90, Math.min(Math.round(width * 0.24), Math.ceil(lw)));
+      var lw = 0, q0;
+      for (q0 = 0; q0 < cols[0].length; q0++) {
+        var nameW = cols[0][q0].label.length * opts.charWidth * 1.18, numsW = originNums(cols[0][q0]).length * opts.charWidth;
+        var w0 = twoLine0 ? Math.max(nameW, numsW) : nameW + 2 * opts.charWidth + numsW;
+        if (w0 > lw) { lw = w0; }
+      }
+      opts.leftGutter = Math.max(90, Math.min(Math.round(width * 0.24), Math.ceil(lw + 26)));
     }
     if (options == null || options.rightGutter === undefined) {
-      var rw = longest(cols[2], function (n) { return rightName(n) + "  " + fmtInt(n.size) + " · " + fmtPct(n.pct); }) * opts.charWidth + 22;
+      var rw = longest(cols[2], function (n) { return rightName(n) + " (" + fmtInt(n.size) + " · " + fmtPct(n.pct) + ")"; }) * opts.charWidth + 22;
       opts.rightGutter = Math.max(120, Math.min(Math.round(width * 0.36), Math.ceil(rw)));
     }
     opts.rightChars = Math.max(8, Math.floor((opts.rightGutter - 22) / opts.charWidth));
     opts.leftChars = Math.max(8, Math.floor((opts.leftGutter - 26) / (opts.charWidth * 1.18)));
+    opts.leftNumChars = Math.max(6, Math.floor((opts.leftGutter - 26) / opts.charWidth));   // the numbers line, regular weight
 
     // One scale for every column, so a ribbon's width means the same thing everywhere.
     var F = model.flowTotal || 1, scale = Infinity;
@@ -503,26 +525,29 @@
     var c0 = lay.columns[0];
     for (i = 0; i < c0.length; i++) {
       var o = c0[i], ocy = o.y + o.h / 2, oy = o.labelY != null ? o.labelY : ocy;
-      var oNums = fmtInt(o.size) + " · " + fmtPct(o.pct) + (hasStayed ? " did not stay" : "");
+      // Numbers in parentheses after every name (Kent, 2026-09-11). When the gutter is capped by
+      // a narrow zone, drop the suffix rather than clip the count.
+      var oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + (hasStayed ? " did not stay" : "") + ")";
+      if (oNums.length > (opts.leftNumChars || 99)) { oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + ")"; }
       if (Math.abs(oy - ocy) > 2) { out.push(leader(o.x, ocy, o.x - 6, oy)); }
       if (lay.twoLine[0]) {
         out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy - 3) + "\" text-anchor=\"end\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label) + "</title>" + esc(clip(o.label, opts.leftChars)) + "</text>");
         out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy + 13) + "\" text-anchor=\"end\" fill=\"#5a5a5a\">" + esc(oNums) + "</text>");
       } else {
-        out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy + 4) + "\" text-anchor=\"end\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label + ": " + oNums) + "</title>" + esc(clip(o.label, opts.leftChars)) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\">  " + esc(oNums) + "</tspan></text>");
+        out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy + 4) + "\" text-anchor=\"end\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label + " " + oNums) + "</title>" + esc(clip(o.label, opts.leftChars)) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\"> " + esc(oNums) + "</tspan></text>");
       }
     }
     // Column 1: to the right of the node, over the outgoing ribbons, with a halo; same rule.
     var c1 = lay.columns[1];
     for (i = 0; i < c1.length; i++) {
       var k = c1[i], kcy = k.y + k.h / 2, ky = k.labelY != null ? k.labelY : kcy, kx = k.x + k.w + 6;
-      var kNums = fmtInt(k.size) + " · " + fmtPct(k.pct);
+      var kNums = "(" + fmtInt(k.size) + " · " + fmtPct(k.pct) + ")";
       if (Math.abs(ky - kcy) > 2) { out.push(leader(k.x + k.w, kcy, kx - 2, ky)); }
       if (lay.twoLine[1]) {
         out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky - 2) + "\" font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "</text>");
         out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 13) + "\" fill=\"#5a5a5a\">" + esc(kNums) + "</text>");
       } else {
-        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 4) + "\" font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\">  " + esc(kNums) + "</tspan></text>");
+        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 4) + "\" font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\"> " + esc(kNums) + "</tspan></text>");
       }
     }
     // Column 2: in the right gutter, with a leader line when the label had to move.
@@ -533,11 +558,11 @@
       if (Math.abs(lyy - cy) > 2) {
         out.push("<path d=\"M" + (d.x + d.w) + "," + cy + " L" + (d.x + d.w + 5) + "," + cy + " L" + (tx - 3) + "," + lyy + "\" fill=\"none\" stroke=\"#b8bec7\" stroke-width=\"1\"/>");
       }
-      var name = d.label + (d.label === opts.otherLabel && d.members > 1 ? " (" + d.members + ")" : "");
-      var nums = fmtInt(d.size) + " · " + fmtPct(d.pct);
-      var room = opts.rightChars - nums.length - 2;
-      out.push("<text x=\"" + tx + "\" y=\"" + (lyy + 4) + "\" fill=\"#1f2a37\"><title>" + esc(name + ": " + nums) + "</title>" + esc(clip(name, room)) +
-        "<tspan fill=\"#5a5a5a\">  " + esc(nums) + "</tspan></text>");
+      var name = foldName(d, opts);
+      var nums = "(" + fmtInt(d.size) + " · " + fmtPct(d.pct) + ")";
+      var room = opts.rightChars - nums.length - 1;
+      out.push("<text x=\"" + tx + "\" y=\"" + (lyy + 4) + "\" fill=\"#1f2a37\"><title>" + esc(name + " " + nums) + "</title>" + esc(clip(name, room)) +
+        "<tspan fill=\"#5a5a5a\"> " + esc(nums) + "</tspan></text>");
     }
 
     // --- footer ----------------------------------------------------------------
@@ -556,7 +581,7 @@
 
   global.FeederFlow = {
     buildModel: buildModel, collapseToFit: collapseToFit, layout: layout, renderSVG: renderSVG, render: render,
-    fmtInt: fmtInt, fmtPct: fmtPct, esc: esc, clip: clip, originTitle: originTitle, resolveColors: resolveColors, colorOf: colorOf,
+    fmtInt: fmtInt, fmtPct: fmtPct, esc: esc, clip: clip, originTitle: originTitle, foldName: foldName, resolveColors: resolveColors, colorOf: colorOf,
     CATEGORY_COLOR: CATEGORY_COLOR, CATEGORY_ORDER: CATEGORY_ORDER, CATEGORY_SHORT: CATEGORY_SHORT, PALETTE: PALETTE, DEFAULTS: DEFAULTS
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);
