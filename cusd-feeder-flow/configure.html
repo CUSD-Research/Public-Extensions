@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CUSD Feeder Flow — Setup</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="cfg">
+    <h1>CUSD Feeder Flow — Setup</h1>
+    <p class="help">
+      Point the flow at the worksheet that carries one row per origin school, transition
+      category and destination, with a student count. The columns are matched by name;
+      change them below only if the guess is wrong.
+    </p>
+
+    <fieldset>
+      <legend>Data worksheet</legend>
+      <div class="row">
+        <label for="sheet">Worksheet</label>
+        <select id="sheet"><option value="">Loading worksheets…</option></select>
+      </div>
+      <div class="row"><label for="fOrigin">Origin school</label><select id="fOrigin"></select></div>
+      <div class="row"><label for="fCategory">Transition category</label><select id="fCategory"></select></div>
+      <div class="row"><label for="fDestination">Destination</label><select id="fDestination"></select></div>
+      <div class="row"><label for="fCount">Student count</label><select id="fCount"></select></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>How it reads</legend>
+      <div class="row">
+        <label for="stayed">"Stayed" category value</label>
+        <input id="stayed" type="text"/>
+        <small class="help">Students in this category become the headline; the flow draws everyone else.</small>
+      </div>
+      <div class="row">
+        <label for="includeStayed">Keep stayers in the flow</label>
+        <select id="includeStayed"><option value="false">No — headline only (recommended)</option><option value="true">Yes — draw them as a ribbon</option></select>
+      </div>
+      <div class="row">
+        <label for="maxDest">Destinations per category</label>
+        <input id="maxDest" type="number" min="0" step="1"/>
+        <small class="help">0 shows every destination the height allows. 5 keeps the five largest and folds the rest into Other.</small>
+      </div>
+      <div class="row"><label for="otherLabel">Label for the fold</label><input id="otherLabel" type="text"/></div>
+      <div class="row">
+        <label for="title">Title</label>
+        <input id="title" type="text" placeholder="Leave blank to use the origin school's name"/>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Words and colours (for a question other than the feeder one)</legend>
+      <div class="row">
+        <label for="unit">What is counted</label>
+        <input id="unit" type="text" placeholder="students"/>
+        <small class="help">Reads in the headline and footer: students, teachers, families.</small>
+      </div>
+      <div class="row">
+        <label for="originNoun">Origins, plural</label>
+        <input id="originNoun" type="text" placeholder="schools"/>
+        <small class="help">Used in the title when several origins are drawn: "3 schools".</small>
+      </div>
+      <div class="row">
+        <label for="originFilter">Origin filter name</label>
+        <input id="originFilter" type="text" placeholder="School Name"/>
+        <small class="help">Named in the message shown when more than eight origins are selected.</small>
+      </div>
+      <div class="row">
+        <label for="catOrder">Category order</label>
+        <input id="catOrder" type="text" placeholder="blank = the feeder order"/>
+        <small class="help">Comma-separated, top to bottom. Categories not listed follow, largest first.</small>
+      </div>
+      <div class="row">
+        <label for="catColors">Category colours</label>
+        <input id="catColors" type="text" placeholder="Left CUSD = #f28e2b; Moved to Another CUSD School = #e15759"/>
+        <small class="help">Name = #hex, separated by semicolons. Categories not listed take a palette colour that stays with their name.</small>
+      </div>
+    </fieldset>
+
+    <p class="note">The flow reads the worksheet's summary data, so row-level security applies exactly as it
+      does to the sheet. Nothing is sent anywhere; the drawing happens in the viewer's browser.</p>
+
+    <div class="actions">
+      <button id="cancelBtn" class="cusd-btn btn-secondary" type="button">Cancel</button>
+      <button id="saveBtn" class="cusd-btn" type="button">Save</button>
+    </div>
+  </div>
+
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./configure.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+/* Styling for the in-dashboard flow and the Configure dialog. Dependency-free so the
+   extension stays small and auditable; the flow itself is inline SVG from flow-model.js. */
+
+:root {
+  --cusd-navy: #003087;
+  --cusd-navy-dk: #00205b;
+  --cusd-gray: #5a5a5a;
+  --cusd-line: #d7d7d7;
+  --cusd-red: #b3261e;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; background: transparent; }
+body { font-family: "Segoe UI", Tableau, Arial, sans-serif; color: #222; }
+
+/* ---- in-dashboard view ---- */
+.wrap { position: relative; width: 100%; height: 100%; }
+.viz { width: 100%; height: 100%; line-height: 0; }
+.viz svg { display: block; width: 100%; height: 100%; }
+
+.status {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; text-align: center;
+  font-size: 13px; color: var(--cusd-gray);
+}
+.status.error { color: var(--cusd-red); }
+[hidden] { display: none !important; }
+
+/* ---- Configure dialog ---- */
+.cfg { padding: 16px 18px 18px; max-width: 560px; }
+.cfg h1 { font-size: 16px; margin: 0 0 6px; color: var(--cusd-navy); }
+.cfg .help { font-size: 12px; color: var(--cusd-gray); margin: 0 0 12px; }
+.cfg fieldset { border: 1px solid var(--cusd-line); border-radius: 4px; padding: 10px 12px; margin: 0 0 12px; }
+.cfg legend { font-size: 12px; font-weight: 600; color: #333; padding: 0 4px; }
+.cfg .row { display: grid; grid-template-columns: 170px 1fr; gap: 6px 10px; align-items: center; margin: 0 0 8px; font-size: 13px; }
+.cfg .row.full { grid-template-columns: 1fr; }
+.cfg label { color: #333; }
+.cfg select, .cfg input[type="text"], .cfg input[type="number"] {
+  font: inherit; padding: 5px 7px; border: 1px solid var(--cusd-line); border-radius: 4px; width: 100%;
+}
+.cfg small.help { grid-column: 2; margin: -2px 0 0; }
+.cfg .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.cusd-btn { font: inherit; font-weight: 600; color: #fff; background: var(--cusd-navy); border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+.cusd-btn:hover:not(:disabled) { background: var(--cusd-navy-dk); }
+.cusd-btn.btn-secondary { background: #fff; color: var(--cusd-navy); border: 1px solid var(--cusd-navy); }
+.cfg .empty { color: var(--cusd-gray); font-style: italic; }
+.cfg .note { font-size: 12px; color: var(--cusd-gray); border-left: 3px solid var(--cusd-line); padding: 4px 10px; margin: 8px 0 0; }
