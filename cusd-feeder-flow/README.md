@@ -13,8 +13,9 @@ into slivers too thin to label. That is the problem this extension exists to fix
 
 - **Stayers become a headline** — a sentence and a proportional bar at the top — and the flow
   gives its whole height to the students who did not stay.
-- **Every node carries its count and its share of the whole cohort**, so the numbers in the flow
-  add up with the headline rather than with each other. Hover a ribbon for the share of movers.
+- **Every node carries its count and its share of the whole cohort, in parentheses after its
+  name**, so the numbers in the flow add up with the headline rather than with each other. Hover a
+  ribbon for the share of movers.
 - **Right-hand labels sit in a gutter with leader lines**, sorted by size, so a destination of two
   students still gets a readable line. Destinations fold into *Other* only when the labels
   physically cannot fit the height, or when the author caps them (*Destinations per category*).
@@ -50,7 +51,7 @@ nothing else, so each summary row is one flow:
 workbook's Top 5 set into one bucket, and that set ranks school names and exit reasons together
 (the `Destination` calc carries a reason for every student who left), so a leaver's reason outside
 the top five would arrive here already mislabelled as a CUSD school. The extension folds by itself,
-per category, and labels the fold *Other (n)* — so hand it the unfolded field.
+per category, and labels the fold *n others* — so hand it the unfolded field.
 
 Keep the same datasource filters as the rest of the workbook — `dataLevel = SCHOOL` and the
 security condition — and apply the dashboard's School Year, School Name and Grade Level filters
@@ -69,34 +70,80 @@ already points at `https://cusd-research.github.io/Public-Extensions/cusd-feeder
 and that host is already allow-listed on the Tableau Cloud site for the Excel export, so nothing
 new is needed there.
 
-1. **Host it.** In a local clone of `Public-Extensions`, on a branch, copy this folder in and add
-   the library beside it — the same file the other three folders carry. PowerShell, with the two
-   clone paths set once:
+**Order matters: host first, test in Desktop second.** A `.trex` is only a pointer at the hosted
+`index.html`. Desktop loads the extension's code from that URL, so until the folder is live on
+Pages the Desktop test can only show a load error. (The one way to test before hosting is a local
+web server and a dev copy of the manifest pointing at `http://localhost`.)
+
+1. **Host it, and re-run the same block for every update.** Paste this whole block into Windows
+   PowerShell, from any folder, exactly as it is. It needs nothing filled in: it clones what it
+   needs into a temp folder, replaces the hosted folder with the vault's copy beside the library
+   the other three carry, pushes a dated `feeder-flow-*` branch to Public-Extensions, and puts the
+   manifest in your Documents folder for step 3. When the hosted copy already matches the vault it
+   says so and pushes nothing. Git may open a browser sign-in for the private vault clone and for
+   the push; finish it and paste again. After an update is merged, close and reopen the workbook in
+   Desktop; on Cloud, hard-refresh the browser. The extension object does not need re-adding.
 
    ```powershell
-   $vault = "C:\path\to\CUSD-Data-Vault"        # this repo
-   $pub   = "C:\path\to\Public-Extensions"      # the hosting repo
-   cd $pub
-   git checkout -b feeder-flow-hosting main
-   Copy-Item -Recurse "$vault\tableau-extensions\cusd-feeder-flow" ".\cusd-feeder-flow"
-   New-Item -ItemType Directory ".\cusd-feeder-flow\lib" | Out-Null
-   Copy-Item ".\cusd-excel-export\lib\tableau.extensions.1.latest.min.js" ".\cusd-feeder-flow\lib\"
-   git add cusd-feeder-flow
-   git commit -m "cusd-feeder-flow: host the feeder flow extension"
-   git push -u origin feeder-flow-hosting
+   & {
+     if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "git is not installed or not on PATH" }
+     $work = Join-Path $env:TEMP "feeder-flow-hosting"
+     if (Test-Path $work) { Remove-Item -Recurse -Force $work }
+     New-Item -ItemType Directory $work | Out-Null
+     Set-Location $work
+
+     git clone --quiet --depth 1 --filter=blob:none --sparse https://github.com/woods-kenton/CUSD-Data-Vault vault
+     if ($LASTEXITCODE) { throw "could not clone the vault; if a browser sign-in appeared, finish it and paste the block again" }
+     git -C vault sparse-checkout set tableau-extensions/cusd-feeder-flow
+     if ($LASTEXITCODE) { throw "sparse-checkout failed" }
+     if (-not (Test-Path "$work\vault\tableau-extensions\cusd-feeder-flow\cusd-feeder-flow.trex")) { throw "the extension folder did not come down from the vault" }
+
+     git clone --quiet --depth 1 https://github.com/CUSD-Research/Public-Extensions pub
+     if ($LASTEXITCODE) { throw "could not clone Public-Extensions" }
+     Set-Location "$work\pub"
+     $branch = "feeder-flow-" + (Get-Date -Format "yyyyMMdd-HHmm")
+     git checkout --quiet -b $branch
+     if ($LASTEXITCODE) { throw "could not create the hosting branch" }
+
+     # An update replaces the hosted folder outright, so removed files go too; lib/ is re-added below.
+     if (Test-Path "$work\pub\cusd-feeder-flow") { Remove-Item -Recurse -Force "$work\pub\cusd-feeder-flow" }
+     Copy-Item -Recurse -ErrorAction Stop "$work\vault\tableau-extensions\cusd-feeder-flow" "$work\pub\cusd-feeder-flow"
+     New-Item -ItemType Directory "$work\pub\cusd-feeder-flow\lib" -ErrorAction Stop | Out-Null
+     Copy-Item -ErrorAction Stop "$work\pub\cusd-excel-export\lib\tableau.extensions.1.latest.min.js" "$work\pub\cusd-feeder-flow\lib\"
+
+     $trex = Join-Path $env:USERPROFILE "Documents\cusd-feeder-flow.trex"
+     Copy-Item -ErrorAction Stop "$work\pub\cusd-feeder-flow\cusd-feeder-flow.trex" $trex
+
+     git add -A cusd-feeder-flow
+     if (-not (git status --porcelain cusd-feeder-flow)) { Write-Host "Nothing to update: the hosted copy already matches the vault. Manifest: $trex"; return }
+     git commit --quiet -m "cusd-feeder-flow: host or update the feeder flow extension"
+     if ($LASTEXITCODE) { throw "commit failed; if git asked for a name and email, set them with git config --global user.name and user.email, then paste the block again" }
+     git push --quiet -u origin $branch
+     if ($LASTEXITCODE) { throw "push failed; if a browser sign-in appeared, finish it and run: git -C $work\pub push -u origin $branch" }
+     Write-Host ""
+     Write-Host "Pushed. Merge it here: https://github.com/CUSD-Research/Public-Extensions/pull/new/$branch"
+     Write-Host "Manifest for Tableau Desktop: $trex"
+   }
    ```
 
-   Open a **draft** PR from that branch. Pages serves from `main`, so the extension is live a
-   minute or two after the merge — merge only after the Desktop test below passes. (A Claude
-   session with push access to that repo can do this step itself; it is the one step that needs
-   a repo outside the vault.)
-2. **Test in Desktop** — no allow-list needed there. Open the feeder workbook, add the `Flow Data`
+2. **Merge the branch** on GitHub at the link the script prints. Pages serves `main`; allow a
+   minute or two, then open
+   `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`. The pass is the
+   sentence *"Feeder Flow could not start: This extension is not running inside an iframe, desktop,
+   or popup window."* A blank page, a 404, or a page stuck on *Loading* means the folder or its
+   `lib/` did not land.
+3. **Test in Desktop** — no allow-list needed there. Open the feeder workbook, add the `Flow Data`
    sheet to the flow dashboard (it can sit behind the extension or be shrunk to a sliver; it only
-   has to be on the dashboard), then drag an **Extension** object → *Access Local Extensions* →
-   this folder's `cusd-feeder-flow.trex` → allow it → **Configure…** → pick `Flow Data` → Save.
+   has to be on the dashboard), then, **on the Dashboard tab**, drag an **Extension** object from
+   the *Objects* pane → *Access Local Extensions* → `Documents\cusd-feeder-flow.trex` → allow it →
+   the object's drop-down → **Configure…** → pick `Flow Data` → Save. Not from a worksheet's
+   Marks card: that menu (*Viz Extensions → Add Extension*) is where Tableau's own Sankey lives,
+   and offering this manifest there fails with *"This extension is not a viz extension. Error
+   Code: 93FB5DF9"*. This is a dashboard extension, so it is an object on a dashboard, not a
+   mark type in a sheet.
    Check one school, one grade: the headline total should equal the `Cohort Header` total, and
    every right-hand count should match a bar on `Where They Went`.
-3. **Publish**, then **View As** a principal at one site: the flow must show their school only.
+4. **Publish**, then **View As** a principal at one site: the flow must show their school only.
    It reads the sheet's summary data, so the row-level security is the sheet's.
 
 ## Configure options
