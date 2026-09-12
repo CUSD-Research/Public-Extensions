@@ -87,14 +87,17 @@ allow-list entry on your Tableau Cloud site.
    server your IT controls. Keep `lib/` and `vendor/` alongside the rest.
 2. **Point the manifest** at your host: set `<url>` in `cusd-excel-export.trex`
    to your hosted `index.html`.
-3. **Allow-list the host on Tableau Cloud** (site admin, one time):
-   *Settings → Extensions →* turn on extensions, then add your host (scheme +
-   domain) with **Allow / full data**.
+3. **Allow-list this extension on Tableau Cloud** (site admin, once per
+   extension — the list is keyed by URL, not by domain, so other extensions on
+   the same host are not covered): *Settings → Extensions → Dashboard
+   Extensions →* turn on extensions, then **Add URL** with the `.trex`'s exact
+   `<url>` and **Allow Full Data Access = Yes** (this extension declares `full
+   data`). See the [repo README](../README.md#every-new-extension-needs-its-own-tableau-cloud-allow-list-entry).
 4. **Add it to a dashboard:** drag an **Extension** object in → **Access Local
    Extensions** → choose the `.trex` → **Configure…** the allowed sheets → publish.
 
 > Hosting isn't a one-way door: switching hosts is just re-hosting the same files,
-> changing the one `<url>`, and allow-listing the new host. No code changes.
+> changing the one `<url>`, and allow-listing the new URL. No code changes.
 
 **Tableau Desktop note:** you can test the extension in **Tableau Desktop**
 without the Cloud allow-list — Desktop simply prompts you to allow it. The

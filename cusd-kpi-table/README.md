@@ -134,9 +134,13 @@ comparison-coloring honor higher/lower-is-better.
    (`CUSD-Research/Public-Extensions/cusd-kpi-table/`) with a repo-root
    `.nojekyll`, or internal IIS. `file://` does not work.
 3. **Point the manifest** `<url>` at your hosted `index.html`.
-4. **Allow-list the host on Tableau Cloud** (site admin, one time):
-   *Settings → Extensions →* add the host (scheme + domain) with **Allow / full
-   data**. *(Tableau Desktop needs no allow-list — validate there first.)*
+4. **Allow-list this extension on Tableau Cloud** (site admin, once per
+   extension): *Settings → Extensions → Dashboard Extensions → Enable Specific
+   Extensions → Add URL* → the `.trex`'s exact `<url>` → **Allow Full Data Access
+   = Yes** (this extension declares `full data`) → Save. The list is keyed by URL,
+   not by domain, so allow-listing another extension on the same host does not
+   cover this one. *(Tableau Desktop needs no allow-list — validate there first.)*
+   See the [repo README](../README.md#every-new-extension-needs-its-own-tableau-cloud-allow-list-entry).
 5. **Add to a dashboard:** place the source worksheet(s) on the dashboard → drag
    an **Extension** object → **Access Local Extensions** → pick the `.trex` →
    **Configure…**.
