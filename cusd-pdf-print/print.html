@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Print dashboard — CUSD</title>
+  <link rel="stylesheet" href="./print.css"/>
+  <!-- Written at runtime by print.js once the dashboard's real size is known:
+       the @page box, and the scale that fits the dashboard onto it. Measured,
+       never guessed — see print.js > applyFit. -->
+  <style id="pageRule"></style>
+</head>
+<body>
+  <!-- Screen-only chrome. @media print hides all of it, so the printed page is
+       the dashboard and nothing else. -->
+  <header class="toolbar" id="toolbar">
+    <div class="tb-row">
+      <h1 id="title">Preparing the printable copy…</h1>
+      <div class="tb-actions">
+        <button id="printBtn" class="cusd-btn" type="button" disabled>Print</button>
+        <button id="tabBtn" class="cusd-btn btn-secondary" type="button" disabled>Open in a new tab</button>
+        <button id="closeBtn" class="cusd-btn btn-secondary" type="button">Close</button>
+      </div>
+    </div>
+    <div class="tb-row tb-controls">
+      <label for="paper">Paper
+        <select id="paper"></select>
+      </label>
+      <span class="fit" id="fit"></span>
+      <span class="hint">Tick <strong>Background graphics</strong> in the print dialog, or the dashboard's coloured panels print white.</span>
+    </div>
+    <div class="notice" id="notice" hidden></div>
+  </header>
+
+  <!-- The stage is sized to the SCALED dashboard, so the transformed iframe's
+       layout box matches what it paints. The iframe itself keeps the dashboard's
+       true pixel size and is scaled visually. -->
+  <div class="stage" id="stage">
+    <iframe id="viz" class="viz" title="Dashboard being printed"></iframe>
+  </div>
+
+  <script src="./print-url.js"></script>
+  <script src="./print.js"></script>
+</body>
+</html>

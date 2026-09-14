@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CUSD PDF Print — Setup</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="cfg">
+    <h1>CUSD PDF Print — Setup</h1>
+    <p class="help">
+      The button opens a printable copy of this dashboard in a new window and prints it
+      through the browser, so the dashboard's extensions appear — Tableau's own PDF export
+      leaves them blank. It needs the published view's URL to know what to print.
+    </p>
+
+    <div class="row">
+      <label for="viewUrl">Published view URL <span class="req">*</span></label>
+      <input id="viewUrl" type="url" placeholder="https://…/#/site/cusd80/views/Workbook/Dashboard"/>
+      <small class="help">
+        Open this dashboard on Tableau Cloud and copy the address bar, or use Share &gt; Copy Link.
+        Paste the plain view URL; the extension adds the embed and filter settings itself.
+      </small>
+      <div id="urlWarn" class="cfg-warn" role="status"></div>
+    </div>
+
+    <div class="row two">
+      <div>
+        <label for="paper">Paper size</label>
+        <select id="paper"></select>
+        <small class="help">The viewer can change this in the print window.</small>
+      </div>
+      <div>
+        <label for="marginIn">Page margin <small>(inches)</small></label>
+        <input id="marginIn" type="number" min="0" max="2" step="0.05"/>
+        <small class="help">Smaller margin, larger dashboard.</small>
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="settleMs">Render wait <small>(milliseconds)</small></label>
+      <input id="settleMs" type="number" min="0" max="60000" step="500"/>
+      <small class="help">
+        How long the copy gets to finish drawing before it prints. Raise it for a slow or
+        heavy dashboard; the viewer can always click Print again.
+      </small>
+    </div>
+
+    <div class="row">
+      <label class="check" for="autoPrint">
+        <input id="autoPrint" type="checkbox"/>
+        <span>Open the print dialog automatically<small class="help">Off means the viewer checks the copy first, then clicks Print.</small></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="check" for="carryFilters">
+        <input id="carryFilters" type="checkbox"/>
+        <span>Carry the current filters and parameters into the printed copy<small class="help">Off prints the view's own saved state instead. Anything that cannot be carried is listed in the print window before printing.</small></span>
+      </label>
+    </div>
+
+    <div id="cfgError" class="cfg-error" role="alert"></div>
+
+    <div class="actions">
+      <button id="cancelBtn" class="cusd-btn btn-secondary" type="button">Cancel</button>
+      <button id="saveBtn" class="cusd-btn" type="button">Save</button>
+    </div>
+  </div>
+
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <script src="./print-url.js"></script>
+  <script src="./configure.js"></script>
+</body>
+</html>
