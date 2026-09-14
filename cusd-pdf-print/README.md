@@ -190,10 +190,14 @@ Read these before promising anyone a pixel-perfect PDF.
    loading the dashboard and clicking PDF, the printout reflects the newer data.
 7. **Tableau Desktop.** There is no published view URL to frame, so the button
    cannot work in Desktop. It is a Cloud/Server feature.
-8. **The nested-copy guard is a heuristic.** The button hides itself when it
-   detects it is two frames deep, which is the print window's framed copy. If CUSD
-   ever embeds a dashboard in an intranet portal page, that is also two deep and
-   the button would hide there too.
+8. **The nested-copy guard reads `ancestorOrigins`, which Firefox does not
+   provide.** The button hides itself in the print window's framed copy by
+   checking whether this host's own origin appears in the frame's ancestor chain.
+   Where the browser withholds that list the check answers "not nested" and the
+   button shows, so the only cost in Firefox is a PDF button visible in the
+   printed copy. It does **not** use frame depth: Tableau Cloud already renders
+   the viz inside an iframe of its own, so every ordinary dashboard is two deep
+   and a depth test hides the button everywhere (`C-20260914-1512`).
 9. **Other extensions on the dashboard re-initialise in the framed copy.** Ones
    that render (a KPI table, a feeder flow) draw normally — that is the point. Any
    that act on load would act again.

@@ -48,24 +48,30 @@
    * dashboard? If so, render nothing: the button is dashboard furniture, and a
    * PDF of the dashboard should not have a "make a PDF" button sitting in it.
    *
-   * A dashboard viewed normally on Tableau Cloud puts this iframe one level
-   * down, so parent === top. Inside print.html the framed viz adds a level, so
-   * parent !== top. Caveat, and it is a real one: if CUSD ever embeds a
-   * dashboard in an intranet portal page, that is also two levels deep and the
-   * button would hide there too. Noted in README > Known limitations.
+   * This asks about ORIGIN, not depth. The earlier version tested
+   * `window.parent !== window.top` — "am I more than one frame deep" — which is
+   * wrong on Tableau Cloud, because Cloud already renders the viz inside an
+   * iframe of its own. An ordinary dashboard is therefore two deep, the guard
+   * fired on every normal view, and the button hid itself everywhere
+   * (C-20260914-1512, Kent).
+   *
+   * The print window is a top-level document on OUR host, so our own origin
+   * appears in the ancestor chain only when we are framed inside it; on Cloud
+   * every ancestor is a Tableau origin. Unknown answers false and the button
+   * shows — the safe direction, since a button appearing in a printed copy is
+   * cosmetic while a button hiding on every dashboard is a dead feature.
+   * (ancestorOrigins is absent in Firefox; CUSD runs Chrome and Edge.)
    */
   function isNestedCopy() {
-    try { return window.parent !== window.top; } catch (e) { return true; }
+    try {
+      return L.isFramedByOrigin(window.location.ancestorOrigins, window.location.origin);
+    } catch (e) {
+      return false;
+    }
   }
 
-  if (isNestedCopy()) {
-    if (wrap) { wrap.hidden = true; }
-    // Still initialise, so Tableau does not sit on "Loading…" in the framed copy.
-    if (typeof tableau !== "undefined" && tableau.extensions) {
-      tableau.extensions.initializeAsync().catch(function () { /* nothing to show anyway */ });
-    }
-    return;
-  }
+  var nested = L ? isNestedCopy() : false;
+  if (nested && wrap) { wrap.hidden = true; }
 
   if (!L) {
     if (statusEl) { statusEl.textContent = "print-url.js did not load."; statusEl.className = "status error"; }
@@ -377,8 +383,21 @@
   }
 
   // ---- bootstrap -----------------------------------------------------------
+  /*
+   * initializeAsync MUST be handed a callback for every context-menu item the
+   * manifest registers, on EVERY code path. The manifest declares
+   * <configure-context-menu-item/>, so a bare initializeAsync() anywhere fails
+   * the whole extension with "There were more or different context menu items
+   * registered in the manifest than passed to initializeAsync" — a Tableau
+   * "Unexpected Server Error" on the dashboard, not a quiet degradation.
+   * (C-20260914-1512, Kent.) There is exactly one call, and it is this one.
+   */
   tableau.extensions.initializeAsync({ configure: openConfigure })
     .then(function () {
+      // The framed copy inside the print window initialises like any other, so
+      // Tableau does not sit on "Loading…", but wires up nothing and shows
+      // nothing.
+      if (nested) { return; }
       btn.addEventListener("click", onPrintClick);
       // Silence at rest when the dashboard simply is not linked yet — that is a
       // working state, and the print window asks for the link on the first

@@ -88,6 +88,38 @@
     };
   }
 
+  // ---- am I the copy inside the print window? -----------------------------
+
+  /*
+   * The print window frames the dashboard, and that framed dashboard runs its own
+   * instance of this extension. That instance should render nothing: a PDF of the
+   * dashboard should not contain a "make a PDF" button.
+   *
+   * The first attempt tested `window.parent !== window.top`, i.e. "am I more than
+   * one frame deep". That is WRONG on Tableau Cloud, which already renders the viz
+   * inside an iframe of its own — so an ordinary dashboard is two deep, the guard
+   * fired on every normal view, and the button hid itself everywhere
+   * (C-20260914-1512).
+   *
+   * Depth cannot answer the question; ORIGIN can. The print window is a
+   * top-level document on OUR host, so our own origin appears in the ancestor
+   * chain only when we are framed inside it. On Tableau Cloud every ancestor is
+   * a Tableau origin.
+   *
+   * Unknown answers false — show the button. A button that shows up in a printed
+   * copy is cosmetic; a button that hides on every dashboard is a dead feature.
+   */
+  function isFramedByOrigin(ancestorOrigins, myOrigin) {
+    if (!ancestorOrigins || !myOrigin) { return false; }
+    var n = ancestorOrigins.length;
+    if (!n) { return false; }
+    for (var i = 0; i < n; i++) {
+      // DOMStringList indexing, not array methods — ancestorOrigins is not an Array.
+      if (ancestorOrigins[i] === myOrigin) { return true; }
+    }
+    return false;
+  }
+
   // ---- how big is the dashboard? ------------------------------------------
 
   /*
@@ -358,6 +390,7 @@
     CSS_PX_PER_IN: CSS_PX_PER_IN,
     computeFit: computeFit,
     measureDashboard: measureDashboard,
+    isFramedByOrigin: isFramedByOrigin,
     encodeFilterValue: encodeFilterValue,
     normalizeValue: normalizeValue,
     filterCarryability: filterCarryability,
