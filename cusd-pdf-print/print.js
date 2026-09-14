@@ -36,7 +36,12 @@
     notice: document.getElementById("notice"),
     pageRule: document.getElementById("pageRule"),
     stage: document.getElementById("stage"),
-    viz: document.getElementById("viz")
+    viz: document.getElementById("viz"),
+    linkbox: document.getElementById("linkbox"),
+    linkUrl: document.getElementById("linkUrl"),
+    linkBtn: document.getElementById("linkBtn"),
+    linkHint: document.getElementById("linkHint"),
+    linkError: document.getElementById("linkError")
   };
 
   // If the opener never answers, the operator must be told rather than left
@@ -47,6 +52,8 @@
   var handshakeTimer = null;
   var settleTimer = null;
   var hasPrintedOnce = false;
+  var built = null;        // the assembled print URL + what survived the trip
+  var loadStarted = false; // the iframe is pointed at the view exactly once
 
   // ---- notices -------------------------------------------------------------
 
@@ -74,7 +81,7 @@
   function renderNotices(fit) {
     var bits = [];
 
-    var unsafe = (payload.skipped || []).concat(payload.dropped || []);
+    var unsafe = built ? (built.skipped || []).concat(built.dropped || []) : [];
     if (unsafe.length) {
       var items = unsafe.map(function (s) {
         return "<li><strong>" + escapeHtml(s.field) + "</strong> — " + escapeHtml(s.reason) + "</li>";
@@ -211,13 +218,71 @@
       applyFit();
     });
 
-    els.tabBtn.disabled = false;
     els.tabBtn.addEventListener("click", function () {
       // The escape hatch. In its own tab the view loads first-party on Tableau's
       // origin, so it authenticates even in a browser that refuses a session
       // cookie to a framed copy; the operator then prints with Ctrl+P.
-      window.open(payload.url, "_blank", "noopener");
+      if (built) { window.open(built.url, "_blank", "noopener"); }
     });
+
+    els.linkBtn.addEventListener("click", onLinkSubmit);
+    els.linkUrl.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { onLinkSubmit(); }
+    });
+
+    if (payload.needsUrl) {
+      askForLink();
+    } else {
+      startWithUrl(payload.viewUrl);
+    }
+  }
+
+  // ---- linking -------------------------------------------------------------
+
+  function askForLink() {
+    els.title.textContent = 'Link "' + payload.dashboardName + '" to print it';
+    els.linkbox.hidden = false;
+    els.linkHint.textContent = payload.canSaveUrl
+      ? "This is a one-time step: the link is saved into the workbook, so nobody is asked again. Publish or save the workbook afterwards to keep it."
+      : "You are viewing this dashboard rather than editing it, so the link can be used now but not saved. To store it for everyone, do this once from Edit on the web, or in Tableau Desktop.";
+    els.linkUrl.focus();
+  }
+
+  function onLinkSubmit() {
+    els.linkError.textContent = "";
+    var check = L.normalizeViewUrl(els.linkUrl.value);
+    if (!check.ok) {
+      els.linkError.textContent = check.problem;
+      els.linkUrl.focus();
+      return;
+    }
+    // Hand it back to the dashboard so it can be stored. That reply is
+    // informational — the print goes ahead either way.
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(
+        { type: "cusd-pdf-print:seturl", viewUrl: check.url },
+        window.location.origin);
+    }
+    els.linkbox.hidden = true;
+    startWithUrl(check.url);
+  }
+
+  // ---- loading the framed copy --------------------------------------------
+
+  function startWithUrl(viewUrl) {
+    if (loadStarted) { return; }
+    loadStarted = true;
+
+    built = L.buildPrintUrl(viewUrl, {
+      filters: payload.filters || [],
+      size: payload.size,
+      carryFilters: payload.carryFilters,
+      maxUrlLength: payload.maxUrlLength
+    });
+
+    els.tabBtn.disabled = false;
+    els.title.textContent = 'Loading "' + payload.dashboardName + '"…';
+    applyFit();   // re-run now that `built` exists, so the notices list filters
 
     // An iframe with no src has already loaded about:blank. If that load event
     // lands after this listener is attached, the countdown would start — and
@@ -229,7 +294,7 @@
       if (!srcSet) { return; }
       startSettle();
     });
-    els.viz.src = payload.url;
+    els.viz.src = built.url;
     srcSet = true;
 
     // Give the window roughly the shape of the page being printed, where the
@@ -257,7 +322,13 @@
 
   window.addEventListener("message", function (event) {
     if (event.origin !== window.location.origin) { return; }
-    if (!event.data || event.data.type !== "cusd-pdf-print:payload") { return; }
+    if (!event.data) { return; }
+    if (event.data.type === "cusd-pdf-print:urlstatus") {
+      // Whether the link stuck. Never blocks the print that is already running.
+      showNotice(escapeHtml(event.data.message), !event.data.saved);
+      return;
+    }
+    if (event.data.type !== "cusd-pdf-print:payload") { return; }
     if (payload) { return; }   // first payload wins; ignore repeats
     onPayload(event.data);
   });

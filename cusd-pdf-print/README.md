@@ -98,7 +98,7 @@ There is no third-party library at all — only the Tableau API.
 
 | Setting | Default | Notes |
 |---|---|---|
-| **Published view URL** | *(required)* | The Extensions API does not expose the view's own URL, so the author pastes it once. Copy the address bar on Tableau Cloud, or use Share > Copy Link. Paste the plain view URL; the extension adds the embed and filter parameters itself. |
+| **Published view URL** | *(optional)* | Leave blank on a dashboard you are still building — see **Linking a dashboard** below. On an already-published dashboard you may paste it here: copy the address bar on Tableau Cloud, or use Share > Copy Link. Paste the plain view URL, not the web-editing address; the extension adds the embed and filter parameters itself. |
 | **Paper size** | Letter, landscape | The viewer can change this in the print window. |
 | **Page margin** | 0.35 in | Smaller margin, larger dashboard. |
 | **Render wait** | 4000 ms | How long the framed copy gets to draw before printing. Raise it for a heavy dashboard. |
@@ -108,6 +108,34 @@ There is no third-party library at all — only the Tableau API.
 The dialog warns if the pasted URL's host differs from the host actually serving
 the dashboard — a URL copied from a different Tableau site would otherwise print
 somebody else's dashboard with no sign anything was wrong.
+
+## Linking a dashboard
+
+The print window frames the dashboard by its **published view URL**, and the
+Extensions API does not expose it. `environment.connectedServer` carries the site
+namespace and the workbook's id, but no workbook or sheet *name*, so the URL
+cannot be reconstructed from the API. It has to come from a person.
+
+It cannot be demanded up front, though. **A dashboard you are still building has
+never been published, so it has no view URL yet** — requiring one at configure
+time would mean knowing the address of something that does not exist in order to
+be allowed to create it. So:
+
+- **New dashboard:** add the extension, leave the URL blank in Configure, and
+  publish. The first click of the PDF button opens the print window, which asks
+  for the link once, prints straight away with what you paste, and stores it.
+- **Already-published dashboard:** paste the URL in Configure if you prefer, or
+  just click the button and paste it when asked. Same result.
+
+Storing the link needs **authoring mode** — Tableau Desktop, or *Edit* on the
+web. From a plain view the paste still prints, it just is not remembered, and the
+print window says so rather than pretending it saved. So do the one-time link
+from Desktop or from Edit on the web, then publish, and no viewer is ever asked.
+
+Paste the **published view's** address, not the web-editing one. Leave edit mode
+first: an `/authoring/` path or a `:mode=authoring` URL is rejected with that
+message, because framing it would load the authoring canvas instead of the
+dashboard.
 
 ## Deploy
 
@@ -155,15 +183,18 @@ Read these before promising anyone a pixel-perfect PDF.
    the copy uses the published view's setting for them.
 4. **A filter set to (All).** If Tableau does not expose the value list for a
    filter showing *(All)*, it is reported as uncarried rather than guessed.
-5. **The copy is a fresh render.** If the extract refreshed between the viewer
+5. **The link is per dashboard, and storing it needs authoring mode.** A viewer
+   can paste it to print once, but only Desktop or Edit-on-the-web can save it
+   into the workbook.
+6. **The copy is a fresh render.** If the extract refreshed between the viewer
    loading the dashboard and clicking PDF, the printout reflects the newer data.
-6. **Tableau Desktop.** There is no published view URL to frame, so the button
+7. **Tableau Desktop.** There is no published view URL to frame, so the button
    cannot work in Desktop. It is a Cloud/Server feature.
-7. **The nested-copy guard is a heuristic.** The button hides itself when it
+8. **The nested-copy guard is a heuristic.** The button hides itself when it
    detects it is two frames deep, which is the print window's framed copy. If CUSD
    ever embeds a dashboard in an intranet portal page, that is also two deep and
    the button would hide there too.
-8. **Other extensions on the dashboard re-initialise in the framed copy.** Ones
+9. **Other extensions on the dashboard re-initialise in the framed copy.** Ones
    that render (a KPI table, a feeder flow) draw normally — that is the point. Any
    that act on load would act again.
 

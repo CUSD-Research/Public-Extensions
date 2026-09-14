@@ -195,7 +195,7 @@
   // duplicated (a repeated key is resolved differently by different hosts).
   var OWNED_KEYS = [
     ":embed", ":toolbar", ":tabs", ":showVizHome", ":showShareOptions",
-    ":size", ":device", ":animate_transition", ":iid", ":origin", ":display_count",
+    ":size", ":device", ":animate_transition", ":mode", ":iid", ":origin", ":display_count",
     ":loadOrderID", ":showAppBanner"
   ];
 
@@ -317,9 +317,29 @@
    */
   function normalizeViewUrl(raw) {
     var s = String(raw || "").trim();
-    if (!s) { return { ok: false, problem: "No dashboard URL has been set. Open Configure and paste the published view's URL." }; }
-    if (!/^https:\/\//i.test(s)) { return { ok: false, problem: "The dashboard URL must start with https://" }; }
-    if (!/\/views\//i.test(s)) { return { ok: false, problem: "That does not look like a published view URL — it should contain /views/." }; }
+
+    // "Not linked yet" is a STATE, not an error. A dashboard being built has not
+    // been published, so its view URL does not exist yet — the extension has to
+    // be addable and publishable before there is anything to paste. The caller
+    // distinguishes this from a bad URL by the `missing` flag and asks for one
+    // at first use instead of refusing to save.
+    if (!s) { return { ok: false, missing: true, problem: "This dashboard has not been linked yet." }; }
+
+    if (!/^https:\/\//i.test(s)) {
+      return { ok: false, problem: "The dashboard URL must start with https://" };
+    }
+
+    // The web-editing address is not the published view's address, and it is the
+    // one you are looking at when you configure an extension on the web — so it
+    // is the wrong URL you are most likely to paste. Framing it would load the
+    // authoring canvas, not the dashboard.
+    if (/\/authoring\//i.test(s) || /:mode=authoring/i.test(s)) {
+      return { ok: false, problem: "That is the web-editing address, not the published view's. Leave edit mode first, then copy the address bar." };
+    }
+
+    if (!/\/views\//i.test(s)) {
+      return { ok: false, problem: "That does not look like a published view URL — it should contain /views/." };
+    }
     return { ok: true, url: s };
   }
 

@@ -69,8 +69,11 @@
   function onSave() {
     els.err.textContent = "";
 
+    // Blank is allowed and is the normal state for a dashboard that has not been
+    // published yet: there is no URL to paste until it exists. The first click of
+    // the PDF button captures it. Only a URL that is present and WRONG blocks.
     var check = L.normalizeViewUrl(els.viewUrl.value);
-    if (!check.ok) {
+    if (!check.ok && !check.missing) {
       els.err.textContent = check.problem;
       els.viewUrl.focus();
       return;
@@ -91,7 +94,7 @@
     }
 
     tableau.extensions.ui.closeDialog(JSON.stringify({
-      viewUrl: check.url,
+      viewUrl: check.ok ? check.url : "",
       paper: els.paper.value,
       marginIn: marginIn,
       settleMs: settleMs,

@@ -176,6 +176,59 @@
     }
   }
 
+  // ---- linking the dashboard ----------------------------------------------
+
+  /*
+   * The view URL is NOT required to add, configure or publish this extension,
+   * and it deliberately cannot be: a dashboard being built has never been
+   * published, so its view URL does not exist yet. Requiring it up front is a
+   * chicken-and-egg — you would have to know the address of something that does
+   * not exist to be allowed to create it. (Kent, 2026-09-14.)
+   *
+   * So the link is captured at FIRST USE instead: the print window asks for it
+   * once, prints immediately with whatever is pasted, and hands it back here to
+   * be stored. Storing needs authoring mode, which is Desktop or Edit on the
+   * web; from a plain view the print still works, it just is not remembered.
+   */
+  function isAuthoring() {
+    try { return tableau.extensions.environment.mode === "authoring"; }
+    catch (e) { return false; }
+  }
+
+  function replyUrlStatus(saved, message) {
+    if (printWindow && !printWindow.closed) {
+      printWindow.postMessage(
+        { type: "cusd-pdf-print:urlstatus", saved: saved, message: message },
+        window.location.origin);
+    }
+  }
+
+  function persistViewUrl(raw) {
+    var check = L.normalizeViewUrl(raw);
+    if (!check.ok) { replyUrlStatus(false, check.problem); return; }
+
+    if (!isAuthoring()) {
+      replyUrlStatus(false,
+        "Printed, but the link was not saved: this dashboard is open for viewing. " +
+        "To store it, open the dashboard in Edit on the web (or in Tableau Desktop) " +
+        "and click the PDF button once there.");
+      return;
+    }
+
+    var s = tableau.extensions.settings;
+    s.set(KEYS.viewUrl, check.url);
+    s.saveAsync()
+      .then(function () {
+        replyUrlStatus(true,
+          "Saved. This dashboard is linked — publish or save the workbook to keep it.");
+        setStatus("Dashboard link saved.");
+      })
+      .catch(function (err) {
+        replyUrlStatus(false,
+          "Could not save the link: " + (err && err.message ? err.message : "unknown error"));
+      });
+  }
+
   // ---- the print window handshake -----------------------------------------
   // The window is opened synchronously inside the click (so the pop-up blocker
   // lets it through) but the payload is not ready until the async gather above
@@ -195,7 +248,12 @@
   window.addEventListener("message", function (event) {
     // Same-origin only: print.html is served from this extension's own host.
     if (event.origin !== window.location.origin) { return; }
-    if (!event.data || event.data.type !== "cusd-pdf-print:ready") { return; }
+    if (!event.data) { return; }
+    if (event.data.type === "cusd-pdf-print:seturl") {
+      persistViewUrl(event.data.viewUrl);
+      return;
+    }
+    if (event.data.type !== "cusd-pdf-print:ready") { return; }
     printWindowReady = true;
     flushPayload();
   });
@@ -203,9 +261,12 @@
   // ---- main click handler --------------------------------------------------
 
   async function onPrintClick() {
-    var check = L.normalizeViewUrl(getSetting(KEYS.viewUrl, ""));
-    if (!check.ok) {
-      setStatus(check.problem, true);
+    // A link that is merely MISSING is fine — the print window asks for one and
+    // prints anyway. A link that is present and WRONG is not: say so here rather
+    // than opening a window that will frame the wrong thing.
+    var stored = L.normalizeViewUrl(getSetting(KEYS.viewUrl, ""));
+    if (!stored.ok && !stored.missing) {
+      setStatus(stored.problem, true);
       return;
     }
 
@@ -238,20 +299,23 @@
       // dashboard.size is a sizing RULE, not a pixel box — see
       // print-url.js > measureDashboard.
       var measured = L.measureDashboard(dashboard.objects, dashboard.size);
-      var built = L.buildPrintUrl(check.url, {
+
+      // The print window ASSEMBLES the URL rather than receiving a finished one.
+      // It has to: when the dashboard is not linked yet, the view URL arrives
+      // from the operator in that window, and the filters still have to be
+      // folded into it there. One assembler, one code path, linked or not.
+      pendingPayload = {
+        type: "cusd-pdf-print:payload",
+        viewUrl: stored.ok ? stored.url : "",
+        needsUrl: !stored.ok,
+        // Whether this session can REMEMBER a pasted link. Saving settings needs
+        // authoring mode (Desktop, or Edit on the web); from a plain view the
+        // print works and the link does not stick.
+        canSaveUrl: isAuthoring(),
         filters: filters.concat(parameters),
         size: { w: measured.w, h: measured.h },
         carryFilters: getBoolSetting(KEYS.carryFilters, L.DEFAULTS.carryFilters),
-        maxUrlLength: L.DEFAULTS.maxUrlLength
-      });
-
-      pendingPayload = {
-        type: "cusd-pdf-print:payload",
-        // One URL, used twice by the print window: as the iframe src, and as the
-        // "open in a new tab" escape hatch. In that tab it loads on Tableau's own
-        // origin, where the session cookie is first-party and so always
-        // authenticates even in a browser that refuses it to a framed copy.
-        url: built.url,
+        maxUrlLength: L.DEFAULTS.maxUrlLength,
         dashboardName: dashboard.name,
         dashW: measured.w,
         dashH: measured.h,
@@ -259,10 +323,7 @@
         paper: getSetting(KEYS.paper, L.DEFAULTS.paper),
         marginIn: getNumberSetting(KEYS.marginIn, L.DEFAULTS.marginIn),
         settleMs: getNumberSetting(KEYS.settleMs, L.DEFAULTS.settleMs),
-        autoPrint: getBoolSetting(KEYS.autoPrint, L.DEFAULTS.autoPrint),
-        carried: built.carried,
-        skipped: built.skipped,
-        dropped: built.dropped
+        autoPrint: getBoolSetting(KEYS.autoPrint, L.DEFAULTS.autoPrint)
       };
       flushPayload();
       setStatus("Opening the print view…");
@@ -319,10 +380,12 @@
   tableau.extensions.initializeAsync({ configure: openConfigure })
     .then(function () {
       btn.addEventListener("click", onPrintClick);
-      // A dashboard that was never configured is a dead button; say so up front
-      // rather than at the moment somebody needs the printout.
-      if (!L.normalizeViewUrl(getSetting(KEYS.viewUrl, "")).ok) {
-        setStatus("Not configured yet — use Configure…", true);
+      // Silence at rest when the dashboard simply is not linked yet — that is a
+      // working state, and the print window asks for the link on the first
+      // click. Only a link that is stored AND malformed is worth a warning here.
+      var atRest = L.normalizeViewUrl(getSetting(KEYS.viewUrl, ""));
+      if (!atRest.ok && !atRest.missing) {
+        setStatus(atRest.problem, true);
       }
     })
     .catch(function (err) {

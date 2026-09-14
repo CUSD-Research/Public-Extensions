@@ -63,6 +63,20 @@ html, body {
 .notice ul { margin: 4px 0 0; padding-left: 18px; }
 .notice.error { background: #fdecef; border-color: #e3aeb8; color: #8a1024; }
 
+/* ---- the "link this dashboard" prompt ---- */
+.linkbox {
+  margin-top: 8px; padding: 10px 12px; border-radius: 4px;
+  background: #eef2fb; border: 1px solid #c3d0ea; font-size: 13px;
+}
+.linkbox label { display: block; margin-bottom: 6px; font-weight: 400; }
+.linkrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.linkrow input {
+  flex: 1 1 380px; min-width: 0; padding: 6px 8px; font: inherit;
+  border: 1px solid var(--cusd-line); border-radius: 4px;
+}
+.linkbox small { display: block; margin-top: 6px; color: var(--cusd-gray); }
+.linkerr { color: #b00020; font-size: 12px; margin-top: 6px; min-height: 0; }
+
 /* ---- the stage ---- */
 .stage {
   position: relative;

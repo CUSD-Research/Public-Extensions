@@ -30,6 +30,21 @@
       <span class="hint">Tick <strong>Background graphics</strong> in the print dialog, or the dashboard's coloured panels print white.</span>
     </div>
     <div class="notice" id="notice" hidden></div>
+
+    <!-- Shown only when this dashboard has not been linked yet. The view URL
+         cannot be required at configure time: a dashboard being built has never
+         been published, so it has no URL to give. It is captured here instead,
+         on the first click, and stored if the session can store it. -->
+    <div class="linkbox" id="linkbox" hidden>
+      <label for="linkUrl"><strong>Link this dashboard, once.</strong>
+        Switch to the tab showing this dashboard, copy its address, and paste it here.</label>
+      <div class="linkrow">
+        <input id="linkUrl" type="url" placeholder="https://…/#/site/…/views/Workbook/Dashboard"/>
+        <button id="linkBtn" class="cusd-btn" type="button">Use this and print</button>
+      </div>
+      <small id="linkHint"></small>
+      <div id="linkError" class="linkerr" role="alert"></div>
+    </div>
   </header>
 
   <!-- The stage is sized to the SCALED dashboard, so the transformed iframe's

@@ -16,11 +16,15 @@
     </p>
 
     <div class="row">
-      <label for="viewUrl">Published view URL <span class="req">*</span></label>
+      <label for="viewUrl">Published view URL <small>(optional — leave blank on a new dashboard)</small></label>
       <input id="viewUrl" type="url" placeholder="https://…/#/site/cusd80/views/Workbook/Dashboard"/>
       <small class="help">
-        Open this dashboard on Tableau Cloud and copy the address bar, or use Share &gt; Copy Link.
-        Paste the plain view URL; the extension adds the embed and filter settings itself.
+        A dashboard you are still building has not been published, so it has no URL yet —
+        leave this blank, publish, and the first click of the PDF button will ask for the
+        link once and remember it. If the dashboard is already published, paste the plain
+        view URL here instead: open it on Tableau Cloud and copy the address bar. Either
+        way the extension adds the embed and filter settings itself. Do not paste the
+        web-editing address — leave edit mode first.
       </small>
       <div id="urlWarn" class="cfg-warn" role="status"></div>
     </div>
