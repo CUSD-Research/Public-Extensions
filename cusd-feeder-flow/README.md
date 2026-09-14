@@ -66,9 +66,10 @@ The vault keeps the source; GitHub Pages serves it from `CUSD-Research/Public-Ex
 every extension is one folder carrying its own `lib/` copy of the Tableau library (checked against
 the live repo 2026-09-11: `cusd-excel-export`, `cusd-help-request` and `cusd-kpi-table` each
 carry `lib/tableau.extensions.1.latest.min.js`, and `.nojekyll` sits at the root). The manifest
-already points at `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`,
-and that host is already allow-listed on the Tableau Cloud site for the Excel export, so nothing
-new is needed there.
+already points at `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`.
+That URL needs **its own entry on the Tableau Cloud allow list** — the list is keyed by URL, not by
+domain, so the Excel export's entry does not cover this one. See step 4 below and the
+[repo README](../README.md#every-new-extension-needs-its-own-tableau-cloud-allow-list-entry).
 
 **Order matters: host first, test in Desktop second.** A `.trex` is only a pointer at the hosted
 `index.html`. Desktop loads the extension's code from that URL, so until the folder is live on
@@ -143,7 +144,13 @@ web server and a dev copy of the manifest pointing at `http://localhost`.)
    mark type in a sheet.
    Check one school, one grade: the headline total should equal the `Cohort Header` total, and
    every right-hand count should match a bar on `Where They Went`.
-4. **Publish**, then **View As** a principal at one site: the flow must show their school only.
+4. **Allow-list it on Tableau Cloud** (site administrator, once per extension): *Settings →
+   Extensions → Dashboard Extensions → Enable Specific Extensions → Add URL* →
+   `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html` → **Allow Full
+   Data Access = Yes** (the manifest declares `full data`; Cloud blocks a full-data extension
+   without the grant) → user prompt **No** → Save. Desktop needs none of this, so a missing entry
+   only shows up once the workbook is published.
+5. **Publish**, then **View As** a principal at one site: the flow must show their school only.
    It reads the sheet's summary data, so the row-level security is the sheet's.
 
 ## Configure options

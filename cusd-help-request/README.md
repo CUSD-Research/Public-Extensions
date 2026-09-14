@@ -82,11 +82,13 @@ allow-list entry on your Tableau Cloud site.
 2. **Point the manifest** at your host: the `<url>` is already set to
    `https://cusd-research.github.io/Public-Extensions/cusd-help-request/index.html`
    — change it if you host elsewhere.
-3. **Allow-list the host on Tableau Cloud** (site admin, one time):
-   *Settings → Extensions →* add the host (scheme + domain) with **Allow**.
-   This extension requests **no full-data access**, so the full-data toggle is not
-   required. *If you already allow-listed `https://cusd-research.github.io` for the
-   Excel-export extension, this one is covered by the same entry.*
+3. **Allow-list this extension on Tableau Cloud** (site admin, once per
+   extension): *Settings → Extensions → Dashboard Extensions → Enable Specific
+   Extensions → Add URL* → the `.trex`'s exact `<url>` → **Allow Full Data Access
+   = Yes** → Save. The manifest declares `<permission>full data</permission>`, and
+   Cloud blocks a full-data extension that has not been granted it. The allow list
+   is keyed by URL, not by domain, so the Excel-export entry does **not** cover
+   this one. See the [repo README](../README.md#every-new-extension-needs-its-own-tableau-cloud-allow-list-entry).
 4. **Add it to a dashboard:** drag an **Extension** object in → **Access Local
    Extensions** → choose the `.trex` → **Configure…** (set the recipient) → publish.
    The recipient + options bake into the workbook.
