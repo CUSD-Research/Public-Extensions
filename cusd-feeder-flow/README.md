@@ -66,9 +66,10 @@ The vault keeps the source; GitHub Pages serves it from `CUSD-Research/Public-Ex
 every extension is one folder carrying its own `lib/` copy of the Tableau library (checked against
 the live repo 2026-09-11: `cusd-excel-export`, `cusd-help-request` and `cusd-kpi-table` each
 carry `lib/tableau.extensions.1.latest.min.js`, and `.nojekyll` sits at the root). The manifest
-already points at `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`,
-and that host is already allow-listed on the Tableau Cloud site for the Excel export, so nothing
-new is needed there.
+already points at `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`.
+That URL still has to be added to the Tableau Cloud site's extension safe list before the workbook
+is published (step 4): the Excel export being live on the same host did not cover it
+(Kent, 2026-09-11).
 
 **Order matters: host first, test in Desktop second.** A `.trex` is only a pointer at the hosted
 `index.html`. Desktop loads the extension's code from that URL, so until the folder is live on
@@ -143,7 +144,13 @@ web server and a dev copy of the manifest pointing at `http://localhost`.)
    mark type in a sheet.
    Check one school, one grade: the headline total should equal the `Cohort Header` total, and
    every right-hand count should match a bar on `Where They Went`.
-4. **Publish**, then **View As** a principal at one site: the flow must show their school only.
+4. **Safe-list it on Tableau Cloud** (site admin): *Settings → Extensions → Safe list → Add
+   URL* with `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`, and
+   tick **Allow full data access**. The manifest asks for full data because that is how the
+   extension reads the sheet; without the tick it loads and then reports that it could not read
+   the data sheet. Each extension needs its own entry: on 2026-09-11 this one was blocked on the
+   site while the Excel export from the same host was already in use.
+5. **Publish**, then **View As** a principal at one site: the flow must show their school only.
    It reads the sheet's summary data, so the row-level security is the sheet's.
 
 ## Configure options
@@ -159,6 +166,7 @@ web server and a dev copy of the manifest pointing at `http://localhost`.)
 | Title | origin school's name | |
 | What is counted | `students` | the noun in the headline, tooltips and footer |
 | Origins, plural | `schools` | the title when several origins are drawn: *3 schools* |
+| "Did not stay" phrase | `did not stay` | after each origin's share (*56 · 18% did not stay*), in ribbon tooltips and the footer; a flow whose origins are the sending schools (the feeder viz's inbound direction) reads right with `came from here` |
 | Origin filter name | `School Name` | named in the message shown when more than eight origins are selected |
 | Category order | blank | comma-separated, top to bottom; blank keeps the feeder preset, unlisted categories follow largest first |
 | Category colours | blank | `Name = #hex; Name = #hex`; unlisted categories take a palette colour that stays with their name |
@@ -173,6 +181,11 @@ a program to. It needs the same four columns, and the rest follows from the data
   short labels and colours). Any other category ranks after the configured order, largest first,
   and takes a Tableau 10 palette colour keyed to its name, so it keeps that colour across filter
   changes and sessions. Set *Category order* and *Category colours* in Configure to pin either.
+- **The words around the stayers are options too.** *"Did not stay" phrase* is what follows an
+  origin's share once the stayers are pulled out. It is written for a flow read forward from one
+  school; the same extension drawing the feeder viz's inbound direction has sending schools as its
+  origins, and *(120 · 8% did not stay)* on an elementary is wrong, so that object sets the phrase
+  to `came from here` (added 2026-09-16).
 - **The "Stayed" category is optional.** Whatever category name is in that Configure field is
   pulled out of the flow into the headline. If no category matches (a question with no notion of
   staying), nothing is pulled out, the whole population flows, and the wording drops *did not
