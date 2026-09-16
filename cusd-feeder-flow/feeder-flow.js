@@ -31,6 +31,7 @@
     unit: "students",            // what is counted, as it reads in the headline and footer
     originNoun: "schools",       // plural noun for the origins, used when several are drawn
     originFilterName: "School Name",   // named in the message shown when too many origins are selected
+    notStayedPhrase: "did not stay",   // after an origin's share, in ribbon tooltips and the footer; "came from here" on an inbound flow
     categoryOrder: "",           // comma-separated, top to bottom; blank = the feeder preset order
     categoryColors: ""           // "Name = #hex; Name = #hex"; unlisted categories take a palette colour
   };
@@ -182,6 +183,7 @@
       title: s.title || "",
       unit: s.unit || "students",
       originNoun: s.originNoun || "schools",
+      notStayedPhrase: s.notStayedPhrase || "did not stay",
       categoryOrder: order.length ? order : undefined,              // undefined keeps the feeder preset
       categoryColor: Object.keys(colors).length ? colors : undefined // merged over the preset by the model
     };

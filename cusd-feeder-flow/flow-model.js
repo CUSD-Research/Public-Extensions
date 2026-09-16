@@ -75,6 +75,7 @@
     title: "",
     unit: "students",        // the thing being counted, as it reads in the headline and footer
     originNoun: "schools",   // plural noun for the origins, used when several are drawn
+    notStayedPhrase: "did not stay",   // the words after an origin's share and in the ribbon tooltip and footer; an inbound flow reads "came from here"
     categoryOrder: CATEGORY_ORDER,   // top-to-bottom order of the categories; unlisted ones follow, largest first
     categoryShort: CATEGORY_SHORT,   // shorter labels for the headline and the middle column
     categoryColor: CATEGORY_COLOR    // colour per category; unlisted ones draw from PALETTE
@@ -355,7 +356,8 @@
     // (2026-09-11) because only the name was measured. Measure both, in the layout the column
     // will actually use (two lines, or one when the origins do not fit at two).
     var hasStayed = model.stayed > 0 && !opts.includeStayed;
-    function originNums(n) { return "(" + fmtInt(n.size) + " · " + fmtPct(n.pct) + (hasStayed ? " did not stay" : "") + ")"; }
+    var phrase = opts.notStayedPhrase || "did not stay";
+    function originNums(n) { return "(" + fmtInt(n.size) + " · " + fmtPct(n.pct) + (hasStayed ? " " + phrase : "") + ")"; }
     var twoLine0 = cols[0].length * opts.twoLineHeight <= flowH;
     if (options == null || options.leftGutter === undefined) {
       var lw = 0, q0;
@@ -480,6 +482,7 @@
     // --- headline strip -------------------------------------------------------
     var unit = opts.unit || "students";
     var hasStayed = model.stayed > 0 && !opts.includeStayed;   // the flow is a subset only when someone stayed
+    var phrase = opts.notStayedPhrase || "did not stay";         // "did not stay" outbound; an inbound flow says "came from here"
     var title = opts.title || originTitle(model.columns[0], opts.originNoun);
     var parts = [fmtInt(model.total) + " " + unit];
     for (i = 0; i < model.headline.length; i++) { parts.push(model.headline[i].short + " " + fmtPct(model.headline[i].pct)); }
@@ -498,7 +501,7 @@
     for (i = 0; i < lay.links.length; i++) {
       var l = lay.links[i], s = lay.nodes[l.source], t = lay.nodes[l.target];
       var tip = s.label + " → " + t.label + ": " + fmtInt(l.value) + " " + unit + " · " + fmtPct(l.pct) + " of all " + fmtInt(model.total);
-      if (hasStayed) { tip += " · " + fmtPct(l.pctOfFlow) + " of those who did not stay"; }
+      if (hasStayed) { tip += " · " + fmtPct(l.pctOfFlow) + " of those who " + phrase; }
       out.push("<path class=\"rib\" d=\"" + ribbonPath(l) + "\" fill=\"" + colorOf(l.category, opts) + "\"><title>" + esc(tip) + "</title></path>");
     }
     // Percent on the ribbon itself where it is tall enough to carry one.
@@ -527,7 +530,7 @@
       var o = c0[i], ocy = o.y + o.h / 2, oy = o.labelY != null ? o.labelY : ocy;
       // Numbers in parentheses after every name (Kent, 2026-09-11). When the gutter is capped by
       // a narrow zone, drop the suffix rather than clip the count.
-      var oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + (hasStayed ? " did not stay" : "") + ")";
+      var oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + (hasStayed ? " " + phrase : "") + ")";
       if (oNums.length > (opts.leftNumChars || 99)) { oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + ")"; }
       if (Math.abs(oy - ocy) > 2) { out.push(leader(o.x, ocy, o.x - 6, oy)); }
       if (lay.twoLine[0]) {
@@ -567,7 +570,7 @@
 
     // --- footer ----------------------------------------------------------------
     out.push("<text x=\"" + m + "\" y=\"" + (H - 6) + "\" font-size=\"11\" fill=\"#8a8f98\">" +
-      esc("Percentages are of all " + fmtInt(model.total) + " " + unit + (hasStayed ? ", including the " + fmtInt(model.stayed) + " who stayed. Hover a ribbon for the share of those who did not stay." : ".")) + "</text>");
+      esc("Percentages are of all " + fmtInt(model.total) + " " + unit + (hasStayed ? ", including the " + fmtInt(model.stayed) + " who stayed. Hover a ribbon for the share of those who " + phrase + "." : ".")) + "</text>");
 
     out.push("</svg>");
     return out.join("");
