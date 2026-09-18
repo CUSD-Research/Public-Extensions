@@ -33,20 +33,26 @@
 
   var CATEGORY_ORDER = [
     "Moved to Another CUSD School",
+    "Moved from Another CUSD School",
     "Left CUSD",
+    "New to CUSD",
     "Graduated or Completed"
   ];
   var CATEGORY_SHORT = {
     "Stayed at Same School": "Stayed",
     "Moved to Another CUSD School": "Moved within CUSD",
+    "Moved from Another CUSD School": "Moved within CUSD",
     "Left CUSD": "Left CUSD",
+    "New to CUSD": "New to CUSD",
     "Graduated or Completed": "Graduated"
   };
   // Tableau 10, the same colours the workbook's category legend already uses.
   var CATEGORY_COLOR = {
     "Stayed at Same School": "#76b7b2",
     "Moved to Another CUSD School": "#e15759",
+    "Moved from Another CUSD School": "#e15759",   // the inbound twin: moving within CUSD is red in both directions
     "Left CUSD": "#f28e2b",
+    "New to CUSD": "#f28e2b",                      // the inbound twin of Left CUSD: crossing the district boundary is orange both ways
     "Graduated or Completed": "#4e79a7"
   };
   // Tableau 10. A category with no configured colour draws from here, keyed by a hash of its
@@ -75,7 +81,8 @@
     title: "",
     unit: "students",        // the thing being counted, as it reads in the headline and footer
     originNoun: "schools",   // plural noun for the origins, used when several are drawn
-    notStayedPhrase: "did not stay",   // the words after an origin's share and in the ribbon tooltip and footer; an inbound flow reads "came from here"
+    notStayedPhrase: "did not stay",   // the words after an origin's share and in the ribbon tooltip and footer; an inbound flow reads "came from elsewhere"
+    mirror: false,           // true draws the flow right to left: the origin on the right, its sources flowing in from the left (the feeder viz's inbound direction)
     categoryOrder: CATEGORY_ORDER,   // top-to-bottom order of the categories; unlisted ones follow, largest first
     categoryShort: CATEGORY_SHORT,   // shorter labels for the headline and the middle column
     categoryColor: CATEGORY_COLOR    // colour per category; unlisted ones draw from PALETTE
@@ -386,9 +393,16 @@
     }
     if (!isFinite(scale) || scale <= 0) { scale = 0; }
 
-    var innerW = width - opts.leftGutter - opts.rightGutter - 2 * m;
-    var x0 = m + opts.leftGutter;
-    var xs = [x0, x0 + Math.round(innerW * opts.middleFraction), x0 + innerW - opts.nodeWidth];
+    // leftGutter is sized for the origin labels and rightGutter for the destination labels, whichever
+    // side each column lands on. Mirrored, the origin column sits on the right and the destinations
+    // flow in from the left, so the physical gutters swap and the columns count down from the right.
+    var mirror = !!opts.mirror;
+    var physLeft = mirror ? opts.rightGutter : opts.leftGutter, physRight = mirror ? opts.leftGutter : opts.rightGutter;
+    var innerW = width - physLeft - physRight - 2 * m;
+    var x0 = m + physLeft;
+    var xs = mirror
+      ? [x0 + innerW - opts.nodeWidth, x0 + innerW - Math.round(innerW * opts.middleFraction) - opts.nodeWidth, x0]
+      : [x0, x0 + Math.round(innerW * opts.middleFraction), x0 + innerW - opts.nodeWidth];
 
     // Stack each column, centred on the flow band.
     var nodes = {};
@@ -417,7 +431,9 @@
       var l = links[i], s0 = nodes[l.source], t0 = nodes[l.target];
       l.h = l.value * scale;
       l.sy = s0.y + s0.sourceOffset; s0.sourceOffset += l.h;
-      l.x0 = s0.x + s0.w; l.x1 = t0.x;
+      // A ribbon leaves the source's far edge and enters the target's near edge; mirrored, "far" and
+      // "near" swap sides and the bezier simply runs right to left.
+      if (mirror) { l.x0 = s0.x; l.x1 = t0.x + t0.w; } else { l.x0 = s0.x + s0.w; l.x1 = t0.x; }
     }
     // Target-side order must follow source y, or ribbons twist inside the node.
     var byTarget = {};
@@ -453,7 +469,7 @@
     }
 
     return {
-      width: width, height: height, top: top, flowH: flowH, scale: scale, twoLine: twoLine,
+      width: width, height: height, top: top, flowH: flowH, scale: scale, twoLine: twoLine, mirror: mirror,
       xs: xs, nodes: nodes, columns: cols.map(function (col) { return col.map(function (n) { return nodes[n.id]; }); }),
       links: links, model: model, opts: opts
     };
@@ -500,14 +516,16 @@
     // --- ribbons ---------------------------------------------------------------
     for (i = 0; i < lay.links.length; i++) {
       var l = lay.links[i], s = lay.nodes[l.source], t = lay.nodes[l.target];
-      var tip = s.label + " → " + t.label + ": " + fmtInt(l.value) + " " + unit + " · " + fmtPct(l.pct) + " of all " + fmtInt(model.total);
+      // The arrow reads in drawing order: left to right. Mirrored, the students flow from the
+      // right-hand column's sources into the origin, so the target is named first.
+      var tip = (lay.mirror ? t.label + " → " + s.label : s.label + " → " + t.label) + ": " + fmtInt(l.value) + " " + unit + " · " + fmtPct(l.pct) + " of all " + fmtInt(model.total);
       if (hasStayed) { tip += " · " + fmtPct(l.pctOfFlow) + " of those who " + phrase; }
       out.push("<path class=\"rib\" d=\"" + ribbonPath(l) + "\" fill=\"" + colorOf(l.category, opts) + "\"><title>" + esc(tip) + "</title></path>");
     }
     // Percent on the ribbon itself where it is tall enough to carry one.
     for (i = 0; i < lay.links.length; i++) {
       var lk = lay.links[i];
-      if (lk.h >= opts.minRibbonLabel && lay.nodes[lk.source].col === 1 && (lk.x1 - lk.x0) >= 220) {
+      if (lk.h >= opts.minRibbonLabel && lay.nodes[lk.source].col === 1 && Math.abs(lk.x1 - lk.x0) >= 220) {
         var lx = (lk.x0 + lk.x1) / 2, ly = (lk.sy + lk.ty) / 2 + lk.h / 2 + 4;
         out.push("<text class=\"halo\" x=\"" + lx + "\" y=\"" + ly + "\" text-anchor=\"middle\" font-size=\"11\" fill=\"#1f2a37\">" + esc(fmtPct(lk.pct)) + "</text>");
       }
@@ -532,39 +550,47 @@
       // a narrow zone, drop the suffix rather than clip the count.
       var oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + (hasStayed ? " " + phrase : "") + ")";
       if (oNums.length > (opts.leftNumChars || 99)) { oNums = "(" + fmtInt(o.size) + " · " + fmtPct(o.pct) + ")"; }
-      if (Math.abs(oy - ocy) > 2) { out.push(leader(o.x, ocy, o.x - 6, oy)); }
+      // Mirrored, the origin sits on the right and its label hangs off the node's right edge.
+      var oX = lay.mirror ? o.x + o.w + 8 : o.x - 8, oAnchor = lay.mirror ? "start" : "end";
+      if (Math.abs(oy - ocy) > 2) { out.push(lay.mirror ? leader(o.x + o.w, ocy, o.x + o.w + 6, oy) : leader(o.x, ocy, o.x - 6, oy)); }
       if (lay.twoLine[0]) {
-        out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy - 3) + "\" text-anchor=\"end\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label) + "</title>" + esc(clip(o.label, opts.leftChars)) + "</text>");
-        out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy + 13) + "\" text-anchor=\"end\" fill=\"#5a5a5a\">" + esc(oNums) + "</text>");
+        out.push("<text x=\"" + oX + "\" y=\"" + (oy - 3) + "\" text-anchor=\"" + oAnchor + "\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label) + "</title>" + esc(clip(o.label, opts.leftChars)) + "</text>");
+        out.push("<text x=\"" + oX + "\" y=\"" + (oy + 13) + "\" text-anchor=\"" + oAnchor + "\" fill=\"#5a5a5a\">" + esc(oNums) + "</text>");
       } else {
-        out.push("<text x=\"" + (o.x - 8) + "\" y=\"" + (oy + 4) + "\" text-anchor=\"end\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label + " " + oNums) + "</title>" + esc(clip(o.label, opts.leftChars)) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\"> " + esc(oNums) + "</tspan></text>");
+        out.push("<text x=\"" + oX + "\" y=\"" + (oy + 4) + "\" text-anchor=\"" + oAnchor + "\" font-weight=\"600\" fill=\"#1f2a37\"><title>" + esc(o.label + " " + oNums) + "</title>" + esc(clip(o.label, opts.leftChars)) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\"> " + esc(oNums) + "</tspan></text>");
       }
     }
     // Column 1: to the right of the node, over the outgoing ribbons, with a halo; same rule.
     var c1 = lay.columns[1];
     for (i = 0; i < c1.length; i++) {
-      var k = c1[i], kcy = k.y + k.h / 2, ky = k.labelY != null ? k.labelY : kcy, kx = k.x + k.w + 6;
+      var k = c1[i], kcy = k.y + k.h / 2, ky = k.labelY != null ? k.labelY : kcy;
+      // The category label sits over the ribbons that leave the node toward the destinations:
+      // to the right of the node normally, to the left when mirrored.
+      var kx = lay.mirror ? k.x - 6 : k.x + k.w + 6, kAnchor = lay.mirror ? " text-anchor=\"end\"" : "";
       var kNums = "(" + fmtInt(k.size) + " · " + fmtPct(k.pct) + ")";
-      if (Math.abs(ky - kcy) > 2) { out.push(leader(k.x + k.w, kcy, kx - 2, ky)); }
+      if (Math.abs(ky - kcy) > 2) { out.push(lay.mirror ? leader(k.x, kcy, kx + 2, ky) : leader(k.x + k.w, kcy, kx - 2, ky)); }
       if (lay.twoLine[1]) {
-        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky - 2) + "\" font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "</text>");
-        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 13) + "\" fill=\"#5a5a5a\">" + esc(kNums) + "</text>");
+        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky - 2) + "\"" + kAnchor + " font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "</text>");
+        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 13) + "\"" + kAnchor + " fill=\"#5a5a5a\">" + esc(kNums) + "</text>");
       } else {
-        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 4) + "\" font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\"> " + esc(kNums) + "</tspan></text>");
+        out.push("<text class=\"halo\" x=\"" + kx + "\" y=\"" + (ky + 4) + "\"" + kAnchor + " font-weight=\"600\" fill=\"#1f2a37\">" + esc(k.short) + "<tspan font-weight=\"400\" fill=\"#5a5a5a\"> " + esc(kNums) + "</tspan></text>");
       }
     }
     // Column 2: in the right gutter, with a leader line when the label had to move.
     var c2 = lay.columns[2];
     for (i = 0; i < c2.length; i++) {
       var d = c2[i], cy = d.y + d.h / 2, lyy = d.labelY != null ? d.labelY : cy;
-      var tx = d.x + d.w + 10;
+      // Mirrored, the destinations are the left-hand column and their labels sit in the left gutter.
+      var tx = lay.mirror ? d.x - 10 : d.x + d.w + 10, tAnchor = lay.mirror ? " text-anchor=\"end\"" : "";
       if (Math.abs(lyy - cy) > 2) {
-        out.push("<path d=\"M" + (d.x + d.w) + "," + cy + " L" + (d.x + d.w + 5) + "," + cy + " L" + (tx - 3) + "," + lyy + "\" fill=\"none\" stroke=\"#b8bec7\" stroke-width=\"1\"/>");
+        out.push(lay.mirror
+          ? "<path d=\"M" + d.x + "," + cy + " L" + (d.x - 5) + "," + cy + " L" + (tx + 3) + "," + lyy + "\" fill=\"none\" stroke=\"#b8bec7\" stroke-width=\"1\"/>"
+          : "<path d=\"M" + (d.x + d.w) + "," + cy + " L" + (d.x + d.w + 5) + "," + cy + " L" + (tx - 3) + "," + lyy + "\" fill=\"none\" stroke=\"#b8bec7\" stroke-width=\"1\"/>");
       }
       var name = foldName(d, opts);
       var nums = "(" + fmtInt(d.size) + " · " + fmtPct(d.pct) + ")";
       var room = opts.rightChars - nums.length - 1;
-      out.push("<text x=\"" + tx + "\" y=\"" + (lyy + 4) + "\" fill=\"#1f2a37\"><title>" + esc(name + " " + nums) + "</title>" + esc(clip(name, room)) +
+      out.push("<text x=\"" + tx + "\" y=\"" + (lyy + 4) + "\"" + tAnchor + " fill=\"#1f2a37\"><title>" + esc(name + " " + nums) + "</title>" + esc(clip(name, room)) +
         "<tspan fill=\"#5a5a5a\"> " + esc(nums) + "</tspan></text>");
     }
 

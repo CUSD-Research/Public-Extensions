@@ -63,6 +63,14 @@
         <small class="help">Used in the title when several origins are drawn: "3 schools".</small>
       </div>
       <div class="row">
+        <label for="flowDirection">Flow direction</label>
+        <select id="flowDirection">
+          <option value="ltr">Left to right: the origin on the left, where its students went on the right</option>
+          <option value="rtl">Right to left: the origin on the right, where its students came from on the left</option>
+        </select>
+        <small class="help">Right to left is the inbound reading: sources flow into the school. Same data, mirrored drawing.</small>
+      </div>
+      <div class="row">
         <label for="notStayed">"Did not stay" phrase</label>
         <input id="notStayed" type="text" placeholder="did not stay"/>
         <small class="help">After each origin's share, in ribbon tooltips and the footer. On a flow whose origins are the sending schools, "came from here".</small>
