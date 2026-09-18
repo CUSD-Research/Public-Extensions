@@ -166,6 +166,7 @@ web server and a dev copy of the manifest pointing at `http://localhost`.)
 | Title | origin school's name | |
 | What is counted | `students` | the noun in the headline, tooltips and footer |
 | Origins, plural | `schools` | the title when several origins are drawn: *3 schools* |
+| Flow direction | Left to right | Right to left draws the origin on the right with its sources flowing in from the left: the feeder viz's inbound reading. Same data, same headline and folding, mirrored drawing |
 | "Did not stay" phrase | `did not stay` | after each origin's share (*56 · 18% did not stay*), in ribbon tooltips and the footer; a flow whose origins are the sending schools (the feeder viz's inbound direction) reads right with `came from here` |
 | Origin filter name | `School Name` | named in the message shown when more than eight origins are selected |
 | Category order | blank | comma-separated, top to bottom; blank keeps the feeder preset, unlisted categories follow largest first |
@@ -177,10 +178,17 @@ Nothing in the extension is tied to the feeder dashboard. Any question shaped *"
 fits: where a graduating class went, where staff who left a site ended up, where students exited
 a program to. It needs the same four columns, and the rest follows from the data:
 
-- **Categories are data-driven.** The four feeder categories are only a *preset* (their order,
+- **Categories are data-driven.** The six feeder categories, both directions (Stayed, Moved to /
+  Moved from Another CUSD School, Left CUSD, New to CUSD, Graduated or Completed), are only a *preset* (their order,
   short labels and colours). Any other category ranks after the configured order, largest first,
   and takes a Tableau 10 palette colour keyed to its name, so it keeps that colour across filter
   changes and sessions. Set *Category order* and *Category colours* in Configure to pin either.
+- **The drawing can run right to left.** *Flow direction* = right to left keeps the one origin
+  as the anchor but puts it on the right, so the flow reads "these sources, through these
+  categories, into this school". That is the feeder viz's inbound object (added 2026-09-18):
+  Origin = the selected school, Destination = the sending schools and origin labels, direction
+  right to left, phrase `came from elsewhere`. The eight-origin guard, the headline and the
+  per-category folding are unchanged; only the geometry mirrors.
 - **The words around the stayers are options too.** *"Did not stay" phrase* is what follows an
   origin's share once the stayers are pulled out. It is written for a flow read forward from one
   school; the same extension drawing the feeder viz's inbound direction has sending schools as its
