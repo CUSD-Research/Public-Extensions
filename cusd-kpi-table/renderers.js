@@ -14,6 +14,10 @@
  * declares exactly which inputs it needs (value field, max, target, comparison
  * basis, color rule, series). The Configure dialog reads that to show ONLY the
  * relevant controls — so adding a KPI column is answering 2-3 dropdowns.
+ *
+ * config.clickToFilter marks rows clickable (kpi-table.js owns the actual
+ * Tableau filter calls); config.selectedKey highlights the active row. Both are
+ * optional and purely cosmetic here — this file stays Tableau-independent.
  */
 (function (global) {
   "use strict";
@@ -245,6 +249,18 @@
     catch (e) { return '<span class="muted">—</span>'; }
   }
 
+  // Hover tooltip text for a data cell: header + formatted value, plus the
+  // comparison/target basis when the column has one — all fields already read
+  // for rendering, so this adds no new data surface.
+  function tooltipFor(col, row) {
+    var parts = [(col.header || col.valueField || "") + ": " + fval(row, col.valueField)];
+    if (col.cmpMode === "field" && col.cmpField) parts.push("vs " + col.cmpField + ": " + fval(row, col.cmpField));
+    else if (col.cmpMode === "constant" && isFinite(num(col.cmpConstant))) parts.push("goal: " + col.cmpConstant);
+    if (col.targetMode === "field" && col.targetField) parts.push("target (" + col.targetField + "): " + fval(row, col.targetField));
+    else if (col.targetMode === "constant" && isFinite(num(col.targetConstant))) parts.push("target: " + col.targetConstant);
+    return parts.join(" · ");
+  }
+
   // Distinct, sorted periods present in the data for the configured time dimension.
   function computePeriods(config, rows) {
     if (!config.timeField) return [];
@@ -292,9 +308,12 @@
 
   // Returns the <thead>+<tbody> innerHTML for a <table>. Caller owns the element + class.
   // config.focalPeriod (formatted) selects the focal year; default = latest present.
+  // config.clickToFilter marks rows clickable; config.selectedKey (a row's .key)
+  // highlights the active filter row — both cosmetic here, wired by kpi-table.js.
   function renderTableInner(config, rows) {
     var g = groupAndFocus(config, rows);
     var cols = config.columns || [];
+    var clickable = !!config.clickToFilter;
     var html = "<thead><tr>";
     html += '<th class="col-head" style="text-align:left">' + esc(config.rowHeader || config.rowField || "") + "</th>";
     cols.forEach(function (c) { html += "<th>" + esc(c.header || c.valueField || "") + (c.hint ? '<span class="hint">' + esc(c.hint) + "</span>" : "") + "</th>"; });
@@ -303,8 +322,12 @@
       var ctx = { entity: e, focalV: g.focalV, sparkClip: config.sparkClip };
       var idRow = e.focalRow || (e.periods[0] && e.periods[0].row) || {};
       var idCol = { renderer: config.rowSubField ? "twoLine" : "text", valueField: config.rowField, subField: config.rowSubField, colorMode: "fixed", fixedColor: PALETTE.ink };
-      html += '<tr><td class="col-head">' + renderCell(idCol, idRow, ctx) + "</td>";
-      cols.forEach(function (c) { html += "<td>" + renderCell(c, e.focalRow, ctx) + "</td>"; });
+      var selected = clickable && config.selectedKey != null && config.selectedKey === e.key;
+      var rowCls = (clickable ? "clickable" : "") + (selected ? " selected" : "");
+      var rowTitle = clickable ? (selected ? "Click to clear the dashboard filter" : "Click to filter the dashboard by " + fval(idRow, config.rowField)) : "";
+      html += "<tr" + (rowCls.trim() ? ' class="' + rowCls.trim() + '"' : "") + ' data-key="' + esc(e.key) + '"' + (rowTitle ? ' title="' + esc(rowTitle) + '"' : "") + ">";
+      html += '<td class="col-head">' + renderCell(idCol, idRow, ctx) + "</td>";
+      cols.forEach(function (c) { html += '<td title="' + esc(tooltipFor(c, e.focalRow || {})) + '">' + renderCell(c, e.focalRow, ctx) + "</td>"; });
       html += "</tr>";
     });
     return html + "</tbody>";
