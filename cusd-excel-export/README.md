@@ -20,8 +20,14 @@ with a single button whose target sheets are fixed by the dashboard author.
 
 - **One button → one workbook**, with one tab per allowed worksheet.
 - The author selects the allowed sheets in **Configure…**; nothing else can be exported.
+- **Per-sheet column picker (optional):** each allowed sheet defaults to exporting
+  every column; the author can narrow a sheet to just the columns viewers need.
 - Exports the **summary (aggregated) data shown on screen** — not row-level underlying data.
 - **Columns come out in the sheet's on-screen order**, not alphabetical. (Requires a
+  Tableau host on Extensions API **1.13+**; older hosts fall back to alphabetical —
+  the column picker also needs 1.13+ and is simply omitted below that.)
+- **Optional parameter value in the filename** (e.g. a "Selected School"
+  parameter), so a filtered export downloads pre-labeled instead of a bare date stamp.
   Tableau host on Extensions API **1.13+**; older hosts fall back to alphabetical.)
 - **Only the columns the author keeps.** A viz carries far more fields than it
   shows — everything on the Tooltip shelf, plus the sort helpers that drive row
@@ -107,6 +113,11 @@ allow-list is only required for Tableau Cloud / published workbooks.
 
 In the **Configure…** dialog the author sets:
 
+- **Allowed sheets** — only these can be exported. Expanding a sheet (when its
+  host supports it) shows a column picker underneath — leave every box checked
+  to export the whole sheet, or uncheck some to narrow that sheet's tab. A
+  sheet with only 0–1 columns, or whose host predates API 1.13, has no picker
+  and always exports in full.
 - **Allowed sheets** — only these can be exported.
 Then, **per sheet**, three numbered steps:
 
@@ -122,6 +133,9 @@ Then, **per sheet**, three numbered steps:
    how the table groups** — `Benchmark Period` then `School Year` gives one `BOY`
    heading spanning its years; the other way round groups by year instead.
 - **File-name prefix** — the file downloads as `PREFIX_YYYYMMDD.xlsx`.
+- **Parameter value in filename** — pick a workbook parameter (e.g. "Selected
+  School"); its current value is sanitized and inserted between the prefix and
+  the date: `PREFIX_ParamValue_YYYYMMDD.xlsx`. "(none)" keeps the old behavior.
 - **"About" tab** — toggle on/off, plus an editable confidentiality note.
   (The standard FERPA / data-handling notice is always included on the tab.)
 - **Button tooltip** — hover text (the button itself is the icon).
@@ -208,6 +222,11 @@ add a license file if you intend to redistribute it.
 
 - Summary data only (by design) — no underlying-row export.
 - One tab per allowed sheet.
+- The filename can only carry a **parameter** value (not a currently-selected
+  mark/filter) — parameters are a single stable value regardless of the
+  viewer's selection state, which is what makes them safe to read without a
+  new data call. A future version could add a filter-based option once there's
+  a concrete need.
 - The crosstab supports **one** value field per sheet; a viz showing two measures
   side by side still needs the flat layout.
 - With no sort key picked, rows come out in whatever order the summary data

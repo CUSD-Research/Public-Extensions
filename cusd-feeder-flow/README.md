@@ -70,6 +70,9 @@ already points at `https://cusd-research.github.io/Public-Extensions/cusd-feeder
 That URL needs **its own entry on the Tableau Cloud allow list** — the list is keyed by URL, not by
 domain, so the Excel export's entry does not cover this one. See step 4 below and the
 [repo README](../README.md#every-new-extension-needs-its-own-tableau-cloud-allow-list-entry).
+That URL still has to be added to the Tableau Cloud site's extension safe list before the workbook
+is published (step 4): the Excel export being live on the same host did not cover it
+(Kent, 2026-09-11).
 
 **Order matters: host first, test in Desktop second.** A `.trex` is only a pointer at the hosted
 `index.html`. Desktop loads the extension's code from that URL, so until the folder is live on
@@ -150,6 +153,12 @@ web server and a dev copy of the manifest pointing at `http://localhost`.)
    Data Access = Yes** (the manifest declares `full data`; Cloud blocks a full-data extension
    without the grant) → user prompt **No** → Save. Desktop needs none of this, so a missing entry
    only shows up once the workbook is published.
+4. **Safe-list it on Tableau Cloud** (site admin): *Settings → Extensions → Safe list → Add
+   URL* with `https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html`, and
+   tick **Allow full data access**. The manifest asks for full data because that is how the
+   extension reads the sheet; without the tick it loads and then reports that it could not read
+   the data sheet. Each extension needs its own entry: on 2026-09-11 this one was blocked on the
+   site while the Excel export from the same host was already in use.
 5. **Publish**, then **View As** a principal at one site: the flow must show their school only.
    It reads the sheet's summary data, so the row-level security is the sheet's.
 
@@ -166,6 +175,8 @@ web server and a dev copy of the manifest pointing at `http://localhost`.)
 | Title | origin school's name | |
 | What is counted | `students` | the noun in the headline, tooltips and footer |
 | Origins, plural | `schools` | the title when several origins are drawn: *3 schools* |
+| Flow direction | Left to right | Right to left draws the origin on the right with its sources flowing in from the left: the feeder viz's inbound reading. Same data, same headline and folding, mirrored drawing |
+| "Did not stay" phrase | `did not stay` | after each origin's share (*56 · 18% did not stay*), in ribbon tooltips and the footer; a flow whose origins are the sending schools (the feeder viz's inbound direction) reads right with `came from here` |
 | Origin filter name | `School Name` | named in the message shown when more than eight origins are selected |
 | Category order | blank | comma-separated, top to bottom; blank keeps the feeder preset, unlisted categories follow largest first |
 | Category colours | blank | `Name = #hex; Name = #hex`; unlisted categories take a palette colour that stays with their name |
@@ -176,10 +187,22 @@ Nothing in the extension is tied to the feeder dashboard. Any question shaped *"
 fits: where a graduating class went, where staff who left a site ended up, where students exited
 a program to. It needs the same four columns, and the rest follows from the data:
 
-- **Categories are data-driven.** The four feeder categories are only a *preset* (their order,
+- **Categories are data-driven.** The six feeder categories, both directions (Stayed, Moved to /
+  Moved from Another CUSD School, Left CUSD, New to CUSD, Graduated or Completed), are only a *preset* (their order,
   short labels and colours). Any other category ranks after the configured order, largest first,
   and takes a Tableau 10 palette colour keyed to its name, so it keeps that colour across filter
   changes and sessions. Set *Category order* and *Category colours* in Configure to pin either.
+- **The drawing can run right to left.** *Flow direction* = right to left keeps the one origin
+  as the anchor but puts it on the right, so the flow reads "these sources, through these
+  categories, into this school". That is the feeder viz's inbound object (added 2026-09-18):
+  Origin = the selected school, Destination = the sending schools and origin labels, direction
+  right to left, phrase `came from elsewhere`. The eight-origin guard, the headline and the
+  per-category folding are unchanged; only the geometry mirrors.
+- **The words around the stayers are options too.** *"Did not stay" phrase* is what follows an
+  origin's share once the stayers are pulled out. It is written for a flow read forward from one
+  school; the same extension drawing the feeder viz's inbound direction has sending schools as its
+  origins, and *(120 · 8% did not stay)* on an elementary is wrong, so that object sets the phrase
+  to `came from here` (added 2026-09-16).
 - **The "Stayed" category is optional.** Whatever category name is in that Configure field is
   pulled out of the flow into the headline. If no category matches (a question with no notion of
   staying), nothing is pulled out, the whole population flows, and the wording drops *did not

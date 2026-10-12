@@ -18,12 +18,18 @@
     <fieldset>
       <legend>Sheets allowed to export</legend>
       <div id="sheetList"><span class="empty">Loading worksheets…</span></div>
+      <small class="help">Each sheet defaults to all its columns — expand a sheet to export only some.</small>
     </fieldset>
 
     <div class="row">
       <label for="prefix">File-name prefix</label>
       <input id="prefix" type="text" placeholder="CUSD_Export"/>
-      <small class="help">Downloads as <code>PREFIX_YYYYMMDD.xlsx</code></small>
+    </div>
+
+    <div class="row">
+      <label for="filenameParam">Include a parameter value in the filename</label>
+      <select id="filenameParam"></select>
+      <small class="help">Downloads as <code>PREFIX[_ParamValue]_YYYYMMDD.xlsx</code> — e.g. a "Selected School" parameter.</small>
     </div>
 
     <div class="row">

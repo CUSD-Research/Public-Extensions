@@ -61,6 +61,8 @@
     $("title").value = s.title || "";
     $("unit").value = s.unit || "";
     $("originNoun").value = s.originNoun || "";
+    $("notStayed").value = s.notStayedPhrase || "";
+    $("flowDirection").value = s.flowDirection === "rtl" ? "rtl" : "ltr";
     $("originFilter").value = s.originFilterName || "";
     $("catOrder").value = s.categoryOrder || "";
     $("catColors").value = s.categoryColors || "";
@@ -82,6 +84,8 @@
       title: $("title").value.trim(),
       unit: $("unit").value.trim() || "students",
       originNoun: $("originNoun").value.trim() || "schools",
+      notStayedPhrase: $("notStayed").value.trim() || "did not stay",
+      flowDirection: $("flowDirection").value === "rtl" ? "rtl" : "ltr",
       originFilterName: $("originFilter").value.trim() || "School Name",
       categoryOrder: $("catOrder").value.trim(),
       categoryColors: $("catColors").value.trim()

@@ -26,6 +26,7 @@
         <label class="fld"><span>Row column header</span><input id="rowHeader" type="text" placeholder="e.g. Student"/></label>
         <label class="fld"><span>Density</span><select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
       </div>
+      <label class="ctrl-chk" style="margin-top:10px"><input id="clickToFilter" type="checkbox"/> Click a row to filter the rest of the dashboard <em>(uses “Each row is” as the filter field on every other worksheet that has it; click the row again to clear)</em></label>
       <details class="cfg-details">
         <summary>Time dimension &amp; year selector <em>(optional — for sparklines / focal-year)</em></summary>
         <p class="cfg-note">If your sheet has multiple rows per entity over time (e.g. one row per <b>School Year</b> — put that field on Detail), set it here. Scalar cells then show the <b>focal year</b>; sparklines trend across years. Leave the year <b>unfiltered</b> on the sheet so the trend has all its points.</p>
