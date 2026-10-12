@@ -32,8 +32,6 @@
     allowedSheets: "allowedSheets",   // JSON array of worksheet names
     sheetConfig: "sheetConfig",       // JSON { sheetName: {exclude, sort, across, value} }
     filenamePrefix: "filenamePrefix", // string
-    filenameParam: "filenameParam",   // string — parameter name, "" = disabled
-    sheetColumns: "sheetColumns",     // JSON {sheetName: [fieldName,...]} — subset only, absent = all
     includeFooter: "includeFooter",   // "true" / "false"
     footerText: "footerText",         // string
     buttonLabel: "buttonLabel"        // string
@@ -81,15 +79,6 @@
     }
   }
 
-  // {sheetName: [fieldName,...]} — a sheet with no entry exports all its columns.
-  function getSheetColumnsMap() {
-    try {
-      var raw = tableau.extensions.settings.get(KEYS.sheetColumns);
-      var obj = raw ? JSON.parse(raw) : {};
-      return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
-    } catch (e) {
-      return {};
-    }
   function getAllowedSheets() {
     var arr = getJsonSetting(KEYS.allowedSheets, []);
     return Array.isArray(arr) ? arr : [];
@@ -270,11 +259,6 @@
     return order.length === readerCols.length ? order : identity;
   }
 
-  // Read every page of one worksheet's summary data into an array-of-arrays
-  // (first row = column headers), with columns in the sheet's on-screen order.
-  // `allowedCols`, if given, is a field-name allow-list (author's per-sheet
-  // column picker in Configure) — a falsy/empty value exports every column.
-  async function readSheetAsAoa(worksheet, allowedCols) {
   // Read every page of one worksheet's summary data, in the sheet's on-screen
   // column order, as { headers: [cleaned names], rows: [[cell, …]] }.
   async function readSheet(worksheet) {
@@ -298,15 +282,6 @@
         var page = await reader.getPageAsync(p);
         if (order === null) {
           order = buildColumnOrder(page.columns, viewCols);
-          if (allowedCols && allowedCols.length) {
-            var allowSet = {};
-            allowedCols.forEach(function (n) { allowSet[n] = true; });
-            var filtered = order.filter(function (ci) { return allowSet[page.columns[ci].fieldName]; });
-            // Only trust the filter if it actually matched something — an
-            // author's stale column name (field renamed) shouldn't zero out the sheet.
-            if (filtered.length) { order = filtered; }
-          }
-          aoa.push(order.map(function (ci) { return page.columns[ci].fieldName; }));
           headers = uniqueHeaders(order.map(function (ci) { return page.columns[ci].fieldName; }));
         }
         for (var r = 0; r < page.data.length; r++) {
@@ -319,24 +294,6 @@
       await reader.releaseAsync(); // free the reader even if a page errors
     }
   }
-
-  // Optionally folds a parameter's current value into the filename (e.g. a
-  // "Selected School" parameter) between the prefix and the date stamp.
-  async function buildFilename() {
-    var parts = [getSetting(KEYS.filenamePrefix, "CUSD_Export").replace(/[^\w\-]+/g, "_")];
-
-    var paramName = getSetting(KEYS.filenameParam, "");
-    if (paramName) {
-      try {
-        var params = await tableau.extensions.dashboardContent.dashboard.getParametersAsync();
-        var param = params.filter(function (p) { return p.name === paramName; })[0];
-        var raw = param && param.currentValue ? param.currentValue.formattedValue : null;
-        var clean = raw ? String(raw).replace(/[^\w\-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) : "";
-        if (clean) { parts.push(clean); }
-      } catch (e) {
-        // Parameter renamed/removed since Configure — fall through without it.
-      }
-    }
 
   // --- sort order -----------------------------------------------------------
   // The Extensions API exposes no way to read a worksheet's sort — there is no
@@ -615,8 +572,10 @@
   function buildFilename() {
     var prefix = getSetting(KEYS.filenamePrefix, "CUSD_Export");
     var d = new Date();
-    parts.push(d.getFullYear() + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + d.getDate()).slice(-2));
-    return parts.join("_") + ".xlsx";
+    var stamp = d.getFullYear() +
+      ("0" + (d.getMonth() + 1)).slice(-2) +
+      ("0" + d.getDate()).slice(-2);
+    return prefix.replace(/[^\w\-]+/g, "_") + "_" + stamp + ".xlsx";
   }
 
   // --- main click handler ---------------------------------------------------
@@ -637,15 +596,11 @@
       var wb = XLSX.utils.book_new();
       var usedNames = {};
       var exported = 0;
-      var sheetColsMap = getSheetColumnsMap();
 
       for (var i = 0; i < allowed.length; i++) {
         var name = allowed[i];
         var ws = byName[name];
         if (!ws) { continue; } // author enabled a sheet that no longer exists — skip quietly
-        var aoa = await readSheetAsAoa(ws, sheetColsMap[name]);
-        var sheet = XLSX.utils.aoa_to_sheet(aoa);
-        XLSX.utils.book_append_sheet(wb, sheet, safeSheetName(name, usedNames));
         var data = await readSheet(ws);
         var cfg = getSheetConfig(name);
         var keep = keepIndices(data.headers, cfg.exclude);
@@ -684,7 +639,7 @@
         XLSX.utils.book_append_sheet(wb, about, safeSheetName("About", usedNames));
       }
 
-      XLSX.writeFile(wb, await buildFilename()); // triggers the browser download
+      XLSX.writeFile(wb, buildFilename()); // triggers the browser download
       setStatus("");                       // the download itself is the feedback
     } catch (err) {
       console.error("CUSD Excel Export failed:", err);
@@ -697,36 +652,6 @@
   // --- Configure… dialog launch (author-only) -------------------------------
   // Registered via the `configure` callback below; Tableau wires it to the
   // "Configure…" context-menu item declared in the .trex manifest.
-  async function openConfigure() {
-    var dashboard = tableau.extensions.dashboardContent.dashboard;
-
-    // Per-sheet column names in view order — best-effort. A sheet whose host
-    // lacks getSummaryColumnsInfoAsync (< API 1.13) or errors is just left out
-    // of the map, so the dialog shows no column picker for it (stays "all
-    // columns") instead of forcing a live data read to populate one.
-    var columnsBySheet = {};
-    for (var i = 0; i < dashboard.worksheets.length; i++) {
-      var w = dashboard.worksheets[i];
-      if (typeof w.getSummaryColumnsInfoAsync !== "function") { continue; }
-      try {
-        var cols = await w.getSummaryColumnsInfoAsync();
-        columnsBySheet[w.name] = cols.map(function (c) { return c.fieldName; });
-      } catch (e) { /* leave unset */ }
-    }
-
-    var parameterNames = [];
-    try {
-      var params = await dashboard.getParametersAsync();
-      parameterNames = params.map(function (p) { return p.name; });
-    } catch (e) { /* leave empty — dialog just shows "(none)" */ }
-
-    var payload = JSON.stringify({
-      sheetNames: dashboard.worksheets.map(function (w) { return w.name; }),
-      columnsBySheet: columnsBySheet,
-      parameterNames: parameterNames,
-      current: {
-        allowedSheets: getAllowedSheets(),
-        sheetColumns: getSheetColumnsMap(),
 
   // Best effort: which fields sit ONLY on the marks card's Tooltip shelf. Those
   // are the ones an author almost never wants in the spreadsheet, so they get
@@ -797,7 +722,6 @@
         allowedSheets: getAllowedSheets(),
         sheetConfig: getJsonSetting(KEYS.sheetConfig, {}) || {},
         filenamePrefix: getSetting(KEYS.filenamePrefix, "CUSD_Export"),
-        filenameParam: getSetting(KEYS.filenameParam, ""),
         includeFooter: getSetting(KEYS.includeFooter, "true") === "true",
         footerText: getSetting(KEYS.footerText, DEFAULT_FOOTER),
         buttonLabel: getSetting(KEYS.buttonLabel, "Download to Excel")
@@ -805,7 +729,6 @@
     });
     var url = new URL("./configure.html", window.location.href).href;
 
-    tableau.extensions.ui.displayDialogAsync(url, payload, { height: 620, width: 520 })
     return tableau.extensions.ui.displayDialogAsync(url, payload, { height: 660, width: 620 })
       .then(function (closePayload) {
         // The dialog returns the chosen config as JSON; the parent saves it.
@@ -814,10 +737,8 @@
         var cfg = JSON.parse(closePayload);
         var s = tableau.extensions.settings;
         s.set(KEYS.allowedSheets, JSON.stringify(cfg.allowedSheets || []));
-        s.set(KEYS.sheetColumns, JSON.stringify(cfg.sheetColumns || {}));
         s.set(KEYS.sheetConfig, JSON.stringify(cfg.sheetConfig || {}));
         s.set(KEYS.filenamePrefix, cfg.filenamePrefix || "CUSD_Export");
-        s.set(KEYS.filenameParam, cfg.filenameParam || "");
         s.set(KEYS.includeFooter, cfg.includeFooter ? "true" : "false");
         s.set(KEYS.footerText, cfg.footerText || DEFAULT_FOOTER);
         s.set(KEYS.buttonLabel, cfg.buttonLabel || "Download to Excel");
