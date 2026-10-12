@@ -91,6 +91,8 @@
     $("sparkMode").onchange = function () { state.sparkClip = (this.value === "clip"); preview(); };
     $("showYearSelector").checked = state.showYearSelector === true;
     $("showYearSelector").onchange = function () { state.showYearSelector = this.checked; };
+    $("clickToFilter").checked = state.clickToFilter === true;
+    $("clickToFilter").onchange = function () { state.clickToFilter = this.checked; };
 
     $("exportEnabled").checked = state.exportEnabled !== false;
     $("exportPrefix").value = state.exportPrefix || "";
@@ -268,6 +270,7 @@
       rowField: cur.rowField || "", rowSubField: cur.rowSubField || "", rowHeader: cur.rowHeader || "",
       density: cur.density || "comfortable",
       timeField: cur.timeField || "", showYearSelector: cur.showYearSelector === true, sparkClip: cur.sparkClip !== false,
+      clickToFilter: cur.clickToFilter === true,
       exportEnabled: cur.exportEnabled !== false, exportPrefix: cur.exportPrefix || "", exportAbout: cur.exportAbout !== false,
       columns: Array.isArray(cur.columns) ? cur.columns : []
     };

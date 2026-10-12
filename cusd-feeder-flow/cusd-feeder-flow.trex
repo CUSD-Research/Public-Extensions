@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
+  <dashboard-extension id="com.cusd80.research.feederflow" extension-version="0.2.0">
+    <default-locale>en_US</default-locale>
+    <name resource-id="name"/>
+    <description>CUSD Research feeder flow. Draws where one school's students went the next year: the students who stayed become a headline, and the flow gives its whole height to the ones who moved, with every destination labelled by count and share of the cohort.</description>
+    <author name="CUSD Research and Data Analytics" email="research@cusd80.com" organization="Chandler Unified School District" website="https://www.cusd80.com"/>
+    <min-api-version>1.10</min-api-version>
+    <source-location>
+      <!-- GitHub Pages URL: org CUSD-Research, repo Public-Extensions, this extension in the
+           cusd-feeder-flow/ subfolder. Pages paths are case-sensitive. Allow-list the host
+           https://cusd-research.github.io on the Tableau Cloud site. -->
+      <url>https://cusd-research.github.io/Public-Extensions/cusd-feeder-flow/index.html</url>
+    </source-location>
+    <icon>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</icon>
+    <!-- "full data" lets the extension read the worksheet's summary data, which is how it
+         gets the rows to draw. It never sends that data anywhere. -->
+    <permissions>
+      <permission>full data</permission>
+    </permissions>
+    <context-menu>
+      <configure-context-menu-item/>
+    </context-menu>
+  </dashboard-extension>
+  <resources>
+    <resource id="name">
+      <text locale="en_US">CUSD Feeder Flow</text>
+    </resource>
+  </resources>
+</manifest>
