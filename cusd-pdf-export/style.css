@@ -186,3 +186,26 @@ html, body {
 .cfg #cancelBtn:hover {
   background: #f3f6fb;
 }
+
+
+/* Transparent PDF button background */
+
+html, body, .wrap, .cusd-icon-btn {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.cusd-icon-btn {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.btn-glyph {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: transparent !important;
+}
+
