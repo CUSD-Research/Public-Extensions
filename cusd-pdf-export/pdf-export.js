@@ -54,7 +54,7 @@
 
     // PDF generation is not implemented yet.
     // Keep the button disabled until it is ready.
-    btn.disabled = true;
+    btn.disabled = false;
 
     const sheets = getSelectedWorksheets();
 
