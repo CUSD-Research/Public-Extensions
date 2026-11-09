@@ -142,7 +142,20 @@
         "Unable to initialize PDF extension";
     }
   }
+btn.addEventListener("click", function () {
+  const sheets = getSelectedWorksheets();
 
+  if (sheets.length === 0) {
+    alert("Please configure the worksheets first.");
+    return;
+  }
+
+  alert(
+    "PDF export is not implemented yet.\n\n" +
+    "Configured worksheets:\n" +
+    sheets.map(sheet => sheet.name).join("\n")
+  );
+});
   initialize();
 
 })();
