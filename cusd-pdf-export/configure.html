@@ -1,0 +1,96 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+  <title>CUSD PDF Export — Setup</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div class="cfg">
+
+  <h1>CUSD PDF Export — Setup</h1>
+
+  <p class="help">
+    Choose which worksheets the PDF button will export.
+    Your selection will be saved with the dashboard.
+    Viewers will not need to select worksheets again.
+  </p>
+
+  <fieldset>
+    <legend>Worksheets to export</legend>
+
+    <label>
+      <input type="radio"
+             name="exportMode"
+             id="allSheets"
+             value="all">
+      All worksheets in the dashboard
+    </label>
+
+    <label>
+      <input type="radio"
+             name="exportMode"
+             id="selectedSheets"
+             value="selected"
+             checked>
+      Selected worksheets only
+    </label>
+
+    <div id="sheetSelection">
+      <p class="help">
+        Select the worksheets to include in the PDF:
+      </p>
+
+      <div id="sheetList">
+        <p class="help">Loading worksheets...</p>
+      </div>
+    </div>
+
+  </fieldset>
+
+  <fieldset>
+    <legend>PDF Settings</legend>
+
+    <label for="prefix">File-name prefix</label>
+    <input type="text"
+           id="prefix"
+           value="CUSD_Export"
+           placeholder="CUSD_Export">
+
+    <p class="help">
+      Example: CUSD_Export_20261109.pdf
+    </p>
+
+    <label for="buttonLabel">Button tooltip</label>
+    <input type="text"
+           id="buttonLabel"
+           value="Download to PDF"
+           placeholder="Download to PDF">
+
+  </fieldset>
+
+  <div class="actions">
+    <button id="cancelBtn"
+            class="cusd-btn btn-secondary"
+            type="button">
+      Cancel
+    </button>
+
+    <button id="saveBtn"
+            class="cusd-btn"
+            type="button">
+      Save
+    </button>
+  </div>
+
+</div>
+
+<script src="./lib/tableau.extensions.1.latest.min.js"></script>
+<script src="./configure.js"></script>
+
+</body>
+</html>
