@@ -3,12 +3,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
   <title>CUSD PDF Export</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+
   <div class="wrap">
+
     <button
       id="downloadBtn"
       class="cusd-icon-btn"
@@ -17,33 +20,25 @@
       aria-label="Download to PDF"
       disabled
     >
-      <svg class="btn-glyph"
-           viewBox="0 0 48 80"
-           preserveAspectRatio="xMidYMid meet"
-           aria-hidden="true">
-        <path d="M24 8 V48 M11 35 L24 48 L37 35"
-              fill="none"
-              stroke="#9F9F9F"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"/>
-        <path d="M4 57 H44"
-              stroke="#9F9F9F"
-              stroke-width="4"
-              stroke-linecap="round"/>
-        <text x="24" y="75"
-              text-anchor="middle"
-              font-family="Arial, sans-serif"
-              font-size="13"
-              font-weight="bold"
-              fill="#414141">PDF</text>
-      </svg>
+      <img
+        src="./icon.png"
+        alt=""
+        class="btn-glyph"
+        style="object-fit: contain;"
+      >
     </button>
-    <div id="status" class="status"
-         role="status" aria-live="polite"></div>
+
+    <div
+      id="status"
+      class="status"
+      role="status"
+      aria-live="polite">
+    </div>
+
   </div>
 
   <script src="./lib/tableau.extensions.1.latest.min.js"></script>
   <script src="./pdf-export.js"></script>
+
 </body>
 </html>
