@@ -139,6 +139,10 @@ console.log("CUSD PDF Export diagnostic", {
   pageUrl: window.location.href,
   referrer: document.referrer
 });
+console.log("CUSD Workbook diagnostic", {
+  workbook: tableau.extensions.workbook,
+  dashboard: dashboard.name
+});
       refresh();
 
     } catch (error) {
