@@ -133,7 +133,12 @@
 
       dashboard =
         tableau.extensions.dashboardContent.dashboard;
-
+console.log("CUSD PDF Export diagnostic", {
+  dashboardName: dashboard.name,
+  worksheetNames: dashboard.worksheets.map(sheet => sheet.name),
+  pageUrl: window.location.href,
+  referrer: document.referrer
+});
       refresh();
 
     } catch (error) {
